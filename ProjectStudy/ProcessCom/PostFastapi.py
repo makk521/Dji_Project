@@ -37,7 +37,7 @@ class DjiTools:
     """
     def postMessageSocket(self, sendData):
         # 服务器地址和端口
-        server_address = ('localhost', 8888)  # 此处应与C++服务器的地址和端口匹配
+        server_address = ('124.223.76.58', 8000)  # 此处应与C++服务器的地址和端口匹配
         # 创建Socket客户端
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # 连接到服务器
@@ -51,8 +51,7 @@ class DjiTools:
 if __name__ == "__main__":
     myDji = DjiTools()
     # 获取云端数据并打印结果
-    result = myDji.getDataFromServer()
+    # result = myDji.getDataFromServer()
+    result = "hello"
     myDji.postMessageSocket(result)
     print(result)
-
-
