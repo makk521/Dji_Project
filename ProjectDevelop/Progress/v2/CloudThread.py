@@ -1,4 +1,5 @@
 """
+Tencent
 Fastapi定义网络接口,并通过此接受来自客户端的数据
 获得数据后存入队列,并通过socket取出该数据传给c++
 """
@@ -16,7 +17,7 @@ import queue
 import logging
 
 MAXQUEUESIZE = 20
-ADDR = ('124.223.76.58', 5000)
+ADDR = ('36.111.177.197', 5000) # 发送目标IP
 
 app = FastAPI()
 shareQueue = queue.Queue(maxsize=MAXQUEUESIZE)
@@ -80,5 +81,35 @@ def periodic():
             print("出现如下异常%s"%ex)
             time.sleep(1)
 
+def receiveData(address):
+    """
+    Connect and receive data
+
+    Arguments:
+    address   -   ('cloud private mac',port)
+    """
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        s.bind(address)  # 在不同主机或者同一主机的不同系统下使用实际ip
+        s.listen(10)
+    except socket.error as msg:
+        print(msg)
+        sys.exit(1)
+    print("..................Wait for Connection..................")
+
+    sock, addr = s.accept()
+    
+    while True:
+        buf = sock.recv(1024)  # 接收数据
+        buf1 = buf.decode('utf-8')  # 解码
+        if not buf:
+            break
+        print('Received message:', buf1)
+    sock.close()
+
 if __name__ == "__main__":
+    HOST = '10.0.12.13' # 本机私有ip
+    ADDR2 = (HOST, 5000)   # receiveData
+    Thread(target = receiveData,args=(ADDR2,)).start()
     uvicorn.run("CloudThread:app", host="0.0.0.0", port=8000, workers=1)

@@ -26,4 +26,3 @@ if __name__ == "__main__":
     print(type(dataSend))
     response = requests.post('http://124.223.76.58:8000/foo', json=dataSend)
     print(response.content)
-
