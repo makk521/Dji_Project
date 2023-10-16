@@ -643,6 +643,9 @@ public:
 	}
 
 public:
+	int select(const int& num){
+		return execute("select", num);
+	}
 	int ping()
 	{
 		return execute("ping");

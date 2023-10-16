@@ -9,6 +9,7 @@ struct StructStu
     int age;
 };
 
+// 这是引用，不是指针
 void swap(int& x, int& y){  //
     int temp;
     temp = x; /* 保存地址 x 的值 */
