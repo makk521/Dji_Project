@@ -10,6 +10,9 @@
 #include <chrono>
 #include "RedisConnect.h"
 #include "nlohmann/json.hpp"
+#include <queue>
+#include <mutex>
+#include <condition_variable>
 
 using json = nlohmann::json;
 using namespace std;
@@ -72,6 +75,33 @@ void timerSetRedis() {
     }
 }
 
+template <typename T>
+class ThreadSafeQueue {
+public:
+    ThreadSafeQueue() = default;
+
+    // 向队列中推送数据
+    void push(const T& value) {
+        std::lock_guard<std::mutex> lock(mutex);
+        queue.push(value);
+        condition_variable.notify_one();
+    }
+
+    // 从队列中弹出数据
+    T pop() {
+        std::unique_lock<std::mutex> lock(mutex);
+        condition_variable.wait(lock, [this] { return !queue.empty(); });
+        T value = queue.front();
+        queue.pop();
+        return value;
+    }
+
+private:
+    std::queue<T> queue;  // Use std::queue to store data
+    std::mutex mutex;
+    std::condition_variable condition_variable;
+};
+
 void postData(int clientSocket, sockaddr_in serverAddr){
     usleep(10000000);
     cout << "Post delay 10 seconds" << endl;
@@ -97,7 +127,7 @@ void postData(int clientSocket, sockaddr_in serverAddr){
     
 }
 
-void receiveData(int serverSocket, sockaddr_in serverAddr) {
+void receiveData(int serverSocket, sockaddr_in serverAddr, ThreadSafeQueue<int>& sharedQueue) {
     if (bind(serverSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) == -1) {
         perror("Error binding");
         return ;
@@ -133,6 +163,7 @@ void receiveData(int serverSocket, sockaddr_in serverAddr) {
             break;
         }
         cout << "Received: " << buffer << endl;
+        sharedQueue.push(stoi(buffer));
 
         // 发送响应
         const char* response = "Hello from server";
@@ -142,7 +173,15 @@ void receiveData(int serverSocket, sockaddr_in serverAddr) {
     close(clientSocket);
 }
 
+void consumerFun(ThreadSafeQueue<int>& sharedQueue) {  // Change the argument type to ThreadSafeQueue
+    for (int i = 0; i < 10; ++i) {
+        int value = sharedQueue.pop();  // Use pop method
+        std::cout << "Consumed: " << value << std::endl;
+    }
+}
+
 int main() {
+    ThreadSafeQueue<int> sharedCommandQueue;
     // 创建 Socket Poster
     int clientSocketPoster = socket(AF_INET, SOCK_STREAM, 0);
     if (clientSocketPoster == -1) {
@@ -170,13 +209,14 @@ int main() {
     serverAddrReceiver.sin_addr.s_addr = INADDR_ANY; // 监听所有网卡上的连接
 
     thread posterThread(postData, clientSocketPoster, serverAddrPoster);
-    thread receiverThread(receiveData, serverSocketReceiver, serverAddrReceiver);
-    thread redisThread(timerSetRedis);
+    thread receiverThread(receiveData, serverSocketReceiver, serverAddrReceiver, std::ref(sharedCommandQueue));
+    // thread redisThread(timerSetRedis);
+    thread consumerThread(consumerFun, std::ref(sharedCommandQueue));
 
     // 等待接收线程完成
     receiverThread.join();
     posterThread.join();
-    redisThread.join();
+    // redisThread.join();
 
     // 关闭 Socket
     close(clientSocketPoster);

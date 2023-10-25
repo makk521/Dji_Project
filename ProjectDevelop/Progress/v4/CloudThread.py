@@ -44,7 +44,12 @@ def getName(info: dict):
     global shareQueue,startTime
     startTime = time.time()
     queueLock.acquire()
-    shareQueue.put(info)
+    print(type(info))
+    try:
+        shareQueue.put(int(info["data"]["commandNum"])) 
+    except Exception as ex:
+        print(ex)
+        print("格式错误")
     queueLock.release()
     print(info)
 
