@@ -154,7 +154,7 @@ int main() {
     sockaddr_in serverAddrPoster;
     serverAddrPoster.sin_family = AF_INET;
     serverAddrPoster.sin_port = htons(5000); // 替换为服务器的端口号
-    serverAddrPoster.sin_addr.s_addr = inet_addr("172.21.2.7"); // 替换为服务器的 IP 地址
+    serverAddrPoster.sin_addr.s_addr = inet_addr("192.168.10.83"); // 替换为服务器的 IP 地址
 
     // 创建Socket
     int serverSocketReceiver = socket(AF_INET, SOCK_STREAM, 0);
@@ -166,7 +166,7 @@ int main() {
     // 绑定IP地址和端口
     sockaddr_in serverAddrReceiver;
     serverAddrReceiver.sin_family = AF_INET;
-    serverAddrReceiver.sin_port = htons(5000); // 使用端口12345
+    serverAddrReceiver.sin_port = htons(5001); // 使用端口12345
     serverAddrReceiver.sin_addr.s_addr = INADDR_ANY; // 监听所有网卡上的连接
 
     thread posterThread(postData, clientSocketPoster, serverAddrPoster);

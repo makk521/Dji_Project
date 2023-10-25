@@ -48,7 +48,7 @@ void myFunction() {
     redis->select(11);
 
     Vector3f myVector = {1.0f, 2.0f, 3.0f};
-    Person person = {"John", 30};
+    Person person = {"John", 18};
     json vectorJson = structToJson(myVector);
     json personJson = structToJson(person);
 
