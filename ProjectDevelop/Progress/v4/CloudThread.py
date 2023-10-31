@@ -119,7 +119,7 @@ def receiveData(address):
     sock.close()
 
 if __name__ == "__main__":
-    HOST = '172.17.0.1' # 本机私有ip
-    ADDR2 = (HOST, 5000)   # receiveData
-    Thread(target = receiveData,args=(ADDR2,)).start()
+    HOST = '192.168.10.83' # 本机ip
+    AddressPost = (HOST, 5000)   # receiveData
+    Thread(target = receiveData,args=(AddressPost,)).start()
     uvicorn.run("CloudThread:app", host="0.0.0.0", port=8000, workers=1)
