@@ -10,25 +10,25 @@ class positionParams(BaseModel):
     yaw: Optional[float] = 0
 
 dataSend = {
+
+    "uid": "2", #无人机序号
+    "uavType":"", #无人机类型 大疆=dji
+    "action": "takeoff", #arm disarm takeoff land move gohome setGohomeHeight
+    "params": [], #takeoff:x,y,z,yaw(float xyz轴位移，无人机机头朝向) setGohomeHeight:height
+    "commandNum":"", #唯一命令编号
+    "timeStamp": 46523164613 , #时间戳
+    "priority": '1', #1正常排队执行，2是插队优先执行（下一个执行），3是中断（停止当前指令立即执行）
+    "reserve":"", #保留位
+
+
+
+    # "code": 1,
     # "data": {
-    #     "uid": "2", #无人机序号
-    #     "uavType":"", #无人机类型 大疆=dji
-    #     "action": "takeoff", #arm disarm takeoff land move gohome setGohomeHeight
-    #     "params": [], #takeoff:x,y,z,yaw(float xyz轴位移，无人机机头朝向) setGohomeHeight:height
-    #     "commandNum":"", #唯一命令编号
-    #     "timeStamp": 46523164613 , #时间戳
-    #     "priority": '1', #1正常排队执行，2是插队优先执行（下一个执行），3是中断（停止当前指令立即执行）
-    #     "reserve":"", #保留位
-    # }
-
-
-    "code": 1,
-    "data": {
-        "commandNum": "2",
-        "code": 10086,
-        "timestamp": 432123234566612
-    },
-    "message": "命令执行成功"
+    #     "commandNum": "2",
+    #     "code": 10086,
+    #     "timestamp": 432123234566612
+    # },
+    # "message": "命令执行成功"
 }
 
 

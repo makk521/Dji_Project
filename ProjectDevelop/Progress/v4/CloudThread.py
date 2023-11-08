@@ -1,5 +1,4 @@
 """
-7号机
 Fastapi定义网络接口,并通过此接受来自客户端的数据
 获得数据后存入队列,并通过socket取出该数据传给c++
 """
@@ -17,7 +16,8 @@ import queue
 import logging
 
 MAXQUEUESIZE = 20
-ADDR = ('192.168.10.83', 5001) # 发送目标IP
+RECEIVERPORT = 5001  # 客户端的socket端口
+ADDR = ('192.168.10.83', RECEIVERPORT) # 发送目标IP
 
 app = FastAPI()
 shareQueue = queue.Queue(maxsize=MAXQUEUESIZE)
@@ -46,7 +46,8 @@ def getName(info: dict):
     queueLock.acquire()
     print(type(info))
     try:
-        shareQueue.put(int(info["data"]["commandNum"])) 
+        #shareQueue.put(int(info["data"]["commandNum"]))
+        shareQueue.put(info)
     except Exception as ex:
         print(ex)
         print("格式错误")

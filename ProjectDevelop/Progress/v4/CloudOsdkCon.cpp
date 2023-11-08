@@ -1,5 +1,5 @@
-// 6号机向7号机发送，接收使用5000端口，发送目标为124.223.76.58:5000，
-// 运行顺序为先运行，为保证post成功，post函数先停10秒再运行，即7需要10秒之内运行
+// 只在妙算上运行，
+// 运行顺序为先运行，为保证post成功，post函数先停10秒再运行，即需要10秒之内运行CloudThread.py
 #include <iostream>
 #include <cstring>
 #include <unistd.h>
@@ -13,9 +13,12 @@
 #include <queue>
 #include <mutex>
 #include <condition_variable>
+#include <string>
 
 using json = nlohmann::json;
 using namespace std;
+
+const int RECEIVEPORT = 5001;   //socket开放端口
 struct Vector3f {
     float x;
     float y;
@@ -45,6 +48,9 @@ json structToJson(const Person& obj) {
 }
 
 void timerSetRedis() {
+    """
+    连接数据库后,每隔0.1秒向数据库写入一次数据(Json->String写入数据库)
+    """
     string val;
     int UAVIP = 001;
     int DATA = 1;
@@ -75,6 +81,9 @@ void timerSetRedis() {
     }
 }
 
+"""
+队列模板,重写pop与push指令,支持定义的队列存取int、string等基本数据类型
+"""
 template <typename T>
 class ThreadSafeQueue {
 public:
@@ -103,6 +112,9 @@ private:
 };
 
 void postData(int clientSocket, sockaddr_in serverAddr){
+    """
+    先延时10秒,之后与服务端socket连接,每隔1秒发送一次数据
+    """
     usleep(10000000);
     cout << "Post delay 10 seconds" << endl;
     // 连接到服务器
@@ -122,12 +134,15 @@ void postData(int clientSocket, sockaddr_in serverAddr){
         cout << "Sent data: " << message << endl;
 
         // 添加适当的延时，以控制发送速率
-        usleep(3000000); // 休眠 1 秒
+        usleep(10000000); // 休眠 1 秒
     }
     
 }
 
-void receiveData(int serverSocket, sockaddr_in serverAddr, ThreadSafeQueue<int>& sharedQueue) {
+void receiveData(int serverSocket, sockaddr_in serverAddr, ThreadSafeQueue<std::string>& sharedQueue) {
+    """
+    socket服务端,被连接后若接收到发送来的数据,将其push进shareQueue中
+    """
     if (bind(serverSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) == -1) {
         perror("Error binding");
         return ;
@@ -163,7 +178,7 @@ void receiveData(int serverSocket, sockaddr_in serverAddr, ThreadSafeQueue<int>&
             break;
         }
         cout << "Received: " << buffer << endl;
-        sharedQueue.push(stoi(buffer));
+        sharedQueue.push(buffer);
 
         // 发送响应
         const char* response = "Hello from server";
@@ -173,15 +188,18 @@ void receiveData(int serverSocket, sockaddr_in serverAddr, ThreadSafeQueue<int>&
     close(clientSocket);
 }
 
-void consumerFun(ThreadSafeQueue<int>& sharedQueue) {  // Change the argument type to ThreadSafeQueue
+void consumerFun(ThreadSafeQueue<std::string>& sharedQueue) {  // 指令Json，
+    """
+    一直等待shareQueue中的数据,将其取出(无人机指令及参数)
+    """
     for (int i = 0; i < 10; ++i) {
-        int value = sharedQueue.pop();  // Use pop method
+        std::string value = sharedQueue.pop();  // Use pop method
         std::cout << "Consumed: " << value << std::endl;
     }
 }
 
 int main() {
-    ThreadSafeQueue<int> sharedCommandQueue;
+    ThreadSafeQueue<std::string> sharedCommandQueue;
     // 创建 Socket Poster
     int clientSocketPoster = socket(AF_INET, SOCK_STREAM, 0);
     if (clientSocketPoster == -1) {
@@ -205,7 +223,7 @@ int main() {
     // 绑定IP地址和端口
     sockaddr_in serverAddrReceiver;
     serverAddrReceiver.sin_family = AF_INET;
-    serverAddrReceiver.sin_port = htons(5001); // 使用端口12345
+    serverAddrReceiver.sin_port = htons(RECEIVEPORT); // 使用端口12345
     serverAddrReceiver.sin_addr.s_addr = INADDR_ANY; // 监听所有网卡上的连接
 
     thread posterThread(postData, clientSocketPoster, serverAddrPoster);
