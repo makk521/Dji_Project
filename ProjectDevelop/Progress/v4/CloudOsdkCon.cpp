@@ -1,5 +1,9 @@
-// 只在妙算上运行，
-// 运行顺序为先运行，为保证post成功，post函数先停10秒再运行，即需要10秒之内运行CloudThread.py
+/**
+* @file CloudOsdkCon.cpp
+* @author Makaka
+* @date 2023-11-08
+* @brief 只在妙算上运行，运行顺序为先运行，为保证post成功，post函数先停10秒再运行，即需要10秒之内运行CloudThread.py
+*/
 #include <iostream>
 #include <cstring>
 #include <unistd.h>
@@ -30,7 +34,6 @@ struct Person {
     int age;
 };
 
-// 重载版本1：将 Vector3f 转换为 JSON
 json structToJson(const Vector3f& obj) {
     json jsonObj;
     jsonObj["x"] = obj.x;
@@ -39,7 +42,6 @@ json structToJson(const Vector3f& obj) {
     return jsonObj;
 }
 
-// 重载版本2：将 Person 结构体转换为 JSON
 json structToJson(const Person& obj) {
     json jsonObj;
     jsonObj["name"] = obj.name;
@@ -48,9 +50,11 @@ json structToJson(const Person& obj) {
 }
 
 void timerSetRedis() {
-    """
-    连接数据库后,每隔0.1秒向数据库写入一次数据(Json->String写入数据库)
-    """
+    /**
+    * @brief 连接数据库后,每隔0.1秒向数据库写入一次数据(Json->String写入数据库)     
+    * @param None
+    * @return None
+    */
     string val;
     int UAVIP = 001;
     int DATA = 1;
@@ -81,9 +85,11 @@ void timerSetRedis() {
     }
 }
 
-"""
-队列模板,重写pop与push指令,支持定义的队列存取int、string等基本数据类型
-"""
+/**
+* @brief 队列模板,重写pop与push指令,支持定义的队列存取int、string等基本数据类型
+* @param None
+* @return None
+*/
 template <typename T>
 class ThreadSafeQueue {
 public:
@@ -112,9 +118,12 @@ private:
 };
 
 void postData(int clientSocket, sockaddr_in serverAddr){
-    """
-    先延时10秒,之后与服务端socket连接,每隔1秒发送一次数据
-    """
+    /**
+    * @brief 先延时10秒,之后与服务端socket连接,每隔1秒发送一次数据      
+    * @param clientSocket 本身socket初始化信息
+    * @param serverAddr  服务端IP
+    * @return None
+    */
     usleep(10000000);
     cout << "Post delay 10 seconds" << endl;
     // 连接到服务器
@@ -140,9 +149,13 @@ void postData(int clientSocket, sockaddr_in serverAddr){
 }
 
 void receiveData(int serverSocket, sockaddr_in serverAddr, ThreadSafeQueue<std::string>& sharedQueue) {
-    """
-    socket服务端,被连接后若接收到发送来的数据,将其push进shareQueue中
-    """
+    /**
+    * @brief socket服务端,被连接后若接收到发送来的数据,将其push进shareQueue中
+    * @param serverSocket  本身socket初始化信息
+    * @param serverAddr   本身IP(本身即服务端)
+    * @param sharedQueue  共享队列，与函数consumerFun共享，存放获取的数据（字符串），也可后期处理后再存放进去
+    * @return None
+    */
     if (bind(serverSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) == -1) {
         perror("Error binding");
         return ;
@@ -188,10 +201,13 @@ void receiveData(int serverSocket, sockaddr_in serverAddr, ThreadSafeQueue<std::
     close(clientSocket);
 }
 
-void consumerFun(ThreadSafeQueue<std::string>& sharedQueue) {  // 指令Json，
-    """
-    一直等待shareQueue中的数据,将其取出(无人机指令及参数)
-    """
+void consumerFun(ThreadSafeQueue<std::string>& sharedQueue) {
+    /**
+    * @brief 一直等待shareQueue中的数据,将其取出(无人机指令及参数)，理论上是被处理后的只剩下指令与参数的字符串，转成指定格式传给无人机执行即可
+    *        这是阻塞的，直到shareQueue有数据才能被消费，否则一直等待
+    * @param shareQueue  共享队列，与函数receiveData共享
+    * @return None
+    */
     for (int i = 0; i < 10; ++i) {
         std::string value = sharedQueue.pop();  // Use pop method
         std::cout << "Consumed: " << value << std::endl;
@@ -199,6 +215,11 @@ void consumerFun(ThreadSafeQueue<std::string>& sharedQueue) {  // 指令Json，
 }
 
 int main() {
+    /**
+    * @brief 主函数，负责创建、启动与管理线程，包括socket的收发两个线程,等待队列中指令发送给无人机线程
+    * @param None
+    * @return 0
+    */
     ThreadSafeQueue<std::string> sharedCommandQueue;
     // 创建 Socket Poster
     int clientSocketPoster = socket(AF_INET, SOCK_STREAM, 0);
@@ -223,7 +244,7 @@ int main() {
     // 绑定IP地址和端口
     sockaddr_in serverAddrReceiver;
     serverAddrReceiver.sin_family = AF_INET;
-    serverAddrReceiver.sin_port = htons(RECEIVEPORT); // 使用端口12345
+    serverAddrReceiver.sin_port = htons(RECEIVEPORT); // 使用端口5001
     serverAddrReceiver.sin_addr.s_addr = INADDR_ANY; // 监听所有网卡上的连接
 
     thread posterThread(postData, clientSocketPoster, serverAddrPoster);
