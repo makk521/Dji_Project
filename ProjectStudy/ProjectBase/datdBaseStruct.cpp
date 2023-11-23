@@ -10,7 +10,8 @@
 #include <condition_variable>
 #include <queue> 
 
-struct DataPack {
+struct DataPackHeader
+{
     uint16_t packetType;   // 包类型
     uint16_t packetLength; // 包长度
     uint8_t chanelVersion; // 信道/版本
@@ -27,6 +28,9 @@ struct DataPack {
     uint8_t moduleId; // 模块ID
     uint16_t checkSum; // 校验和
     uint32_t alternateFields; // 备用字段
+};
+struct DataPack {
+    DataPackHeader header; // 包头
     uint8_t* payload; // 数据
 };
 
@@ -107,8 +111,8 @@ std::queue<DataPack*> generateSimulationData(){
     for (int i = 0; i < 10; ++i) {
         // 创建10个结构体并存入students
         DataPack student;
-        student.packetType = i;
-        student.packetIdentificationNum = 20 + i;
+        student.header.packetType = i;
+        student.header.packetIdentificationNum = 20 + i;
         students.push_back(student);
     }
 
@@ -148,7 +152,7 @@ void consumeAndDistribute(ThreadSafeQueue<DataPack*>& scsnToInfoAnalyQueue) {
         if (!scsnToInfoAnalyQueue.empty()) {
             DataPack* ptr = scsnToInfoAnalyQueue.pop();
             judgeAndDistribute(ptr); // 判断并分发指针到各个模块
-            std::cout << "Consumed: " << "Name: " << ptr->packetType << ", Age: " << ptr->packetIdentificationNum << std::endl;
+            std::cout << "Consumed: " << "Name: " << ptr->header.packetType << ", Age: " << ptr->header.packetIdentificationNum << std::endl;
         }
     }
 }
@@ -159,7 +163,7 @@ void judgeAndDistribute(DataPack* ptr){
     * @param ptr 需要分发数据的指针
     * @return None
     */
-    switch (ptr->packetType) {
+    switch (ptr->header.packetType) {
         case 0:
             InfoAnalyToClusterManQueue.push(ptr);
             std::cout << "已分发到集群管理模块" << std::endl;
@@ -190,7 +194,7 @@ void infoAnalyListenOther(){
     while (true) {
         if (!otherModuToInfoAnalyQueue.empty()) {
             DataPack ptr = otherModuToInfoAnalyQueue.pop();
-            std::cout << "信息解析模块收到集群管理模块的数据" << std::endl;
+            std::cout << "信息解析模块收到集群管理模块等三个模块的返回数据" << std::endl;
         }
     }
 }
@@ -204,7 +208,7 @@ void infoAnalyListenCommProc(){
     while (true) {
         if (!CommProcToInfoAnalyQueue.empty()) {
             DataPack ptr = CommProcToInfoAnalyQueue.pop();
-            std::cout << "信息解析模块收到指令处理模块的数据" << std::endl;
+            std::cout << "信息解析模块收到指令处理模块的返回数据" << std::endl;
         }
     }
 }
