@@ -9,7 +9,6 @@
 #include <mutex>
 #include <condition_variable>
 #include <queue> 
-
 struct DataPackHeader
 {
     uint16_t packetType;   // 包类型
@@ -129,7 +128,5 @@ std::queue<DataPack*> generateSimulationData();
 void judgeAndDistribute(DataPack* ptr);
 void infoAnalyListenOther();
 void infoAnalyListenCommProc();
-void exeInfoAnalyModule();
 void commProcListenInfoAnaly();
 void commProcListenSubData();
-void exeCommProcModule();

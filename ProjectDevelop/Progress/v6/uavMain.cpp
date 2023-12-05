@@ -5,7 +5,88 @@
 * @brief c++11实现线程安全队列,生成模拟数据并经信息解析模块分发给各个模块。
 */
 #include "uavMain.h"
+#include <sys/socket.h>
+#include <cstring>
+#include <string>
+#include <unistd.h>
+#include <netinet/in.h>
 
+struct MyStruct {
+    int intValue;
+    float floatValue;
+    char stringValue[20];
+};
+
+void receiveData() {
+    // 创建套接字
+    int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+    if (serverSocket == -1) {
+        perror("Error creating socket");
+        return;
+    }
+
+    // 准备地址结构体
+    sockaddr_in serverAddr;
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(8001);
+    serverAddr.sin_addr.s_addr = INADDR_ANY;
+
+    // 绑定地址
+    if (bind(serverSocket, reinterpret_cast<struct sockaddr*>(&serverAddr), sizeof(serverAddr)) == -1) {
+        perror("Error binding");
+        close(serverSocket);
+        return;
+    }
+
+    // 监听连接
+    if (listen(serverSocket, 5) == -1) {
+        perror("Error listening");
+        close(serverSocket);
+        return;
+    }
+
+    std::cout << "等待客户端连接..." << std::endl;
+
+    // 接受连接
+    sockaddr_in clientAddr;
+    socklen_t clientAddrLen = sizeof(clientAddr);
+    int clientSocket = accept(serverSocket, reinterpret_cast<struct sockaddr*>(&clientAddr), &clientAddrLen);
+
+    if (clientSocket == -1) {
+        perror("Error accepting client connection");
+        close(serverSocket);
+        return;
+    }
+
+    std::cout << "客户端连接成功" << std::endl;
+
+    // 接收和打印数据
+    char buffer[1024];
+    while (true) {
+        // std::memset(buffer, 0, sizeof(buffer));
+        // int bytesReceived = recv(clientSocket, buffer, sizeof(buffer), 0);
+
+        MyStruct receivedData;
+        int bytesReceived = recv(clientSocket, &receivedData, sizeof(receivedData), 0);
+
+        if (bytesReceived == -1) {
+            perror("Error receiving data");
+            break;
+        }
+
+        if (bytesReceived == 0) {
+            std::cout << "客户端断开连接" << std::endl;
+            break;
+        }
+
+        // std::cout << "接收到的数据: " << buffer << std::endl;
+        std::cout << "接收到的数据: " << receivedData.floatValue << receivedData.stringValue << std::endl;
+    }
+
+    // 关闭套接字
+    close(clientSocket);
+    close(serverSocket);
+}
 int main() {
     std::queue<DataPack*> ptrQueueSCSN;
     ptrQueueSCSN = generateSimulationData();
@@ -19,6 +100,8 @@ int main() {
     std::thread commProcListenInfoAnalyThread(commProcListenInfoAnaly);
     std::thread commProcListenSubDataThread(commProcListenSubData);
 
+    std::thread receiveDataThread(receiveData);
+    receiveDataThread.join();
     infoAnalyListenscsnThread.join();
     infoAnalydistributeThread.join();
     infoAnalyListenOtherThread.join();
