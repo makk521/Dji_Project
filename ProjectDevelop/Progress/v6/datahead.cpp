@@ -17,7 +17,7 @@ struct DataPackHeader
     uint16_t singleHopSourceId; // 单跳源ID
     uint16_t checkSum; // 校验和
     uint32_t validTime; // 有效时间
-    uint8_t lastLine;  // 集群ID + 备用字段
+    uint32_t lastLine;  // 集群ID + 备用字段
 };
 
 struct DataPack {
@@ -162,7 +162,7 @@ int main(){
     DataPack ma;
     ma.header.firstLine = firstLine;
     ma.header.secondLine = secondLine;
-    
+    DataPackHeader head;
     std::cout << "PackType:" << getPackType(ma) << std::endl;
     std::cout << "Channel:" << getChannel(ma) << std::endl;
     std::cout << "PacketPriority:" << getPacketPriority(ma) << std::endl;
@@ -178,6 +178,7 @@ int main(){
     std::cout << "CheckSum:" << getCheckSum(ma) << std::endl;
     std::cout << "ValidTime:" << getValidTime(ma) << std::endl;
     std::cout << "ClusterId:" << getClusterId(ma) << std::endl;
-    
+    std::cout << "headsize : " << sizeof(head) << std::endl;
+
     return 0;
 }

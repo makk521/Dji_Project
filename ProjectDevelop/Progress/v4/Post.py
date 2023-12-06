@@ -22,7 +22,6 @@ dataSend = {
     "message": "命令执行成功"
 }
 
-
 if __name__ == "__main__":
     print(type(dataSend))
     response = requests.post('http://192.168.10.83:8000/foo', json=dataSend)
