@@ -34,6 +34,10 @@ struct DataPack {
     DataPackHeader header; // 包头
     char* payload; // 数据
 
+    bool operator<(const DataPack& other) const {
+        return header.checkSum > other.header.checkSum;
+    }
+
     uint32_t getPackType() {
         uint32_t mask = 0b1111111; 
         uint32_t result = header.firstLine >> 25; 
@@ -226,12 +230,13 @@ private:
     std::condition_variable condition_variable;
 };
 
-// 来自SCSN数据使用地址
-ThreadSafeQueue<DataPack*> scsnToInfoAnalyQueue; // SCSN-->信息解析模块
-ThreadSafeQueue<DataPack*> infoAnalyToClusterManQueue; // 信息解析模块-->集群管理模块
-ThreadSafeQueue<DataPack*> infoAnalyToCommProcQueue;  // 信息解析模块-->指令处理模块
-ThreadSafeQueue<DataPack*> infoAnalyToDataProcQueue; // 信息解析模块-->数据处理模块
-ThreadSafeQueue<DataPack*> infoAnalyToRouteManQueue; // 信息解析模块-->路由管理模块
+// 来自SCSN数据
+ThreadSafeQueue<DataPack> scsnQueue;
+ThreadSafeQueue<DataPack> scsnToInfoAnalyQueue; // SCSN-->信息解析模块
+ThreadSafeQueue<DataPack> infoAnalyToClusterManQueue; // 信息解析模块-->集群管理模块
+ThreadSafeQueue<DataPack> infoAnalyToCommProcQueue;  // 信息解析模块-->指令处理模块
+ThreadSafeQueue<DataPack> infoAnalyToDataProcQueue; // 信息解析模块-->数据处理模块
+ThreadSafeQueue<DataPack> infoAnalyToRouteManQueue; // 信息解析模块-->路由管理模块
 // 模块返回数据无法使用地址
 ThreadSafeQueue<DataPack> otherModuToInfoAnalyQueue; // 集群管理模块、数据处理模块、路由管理模块-->信息解析模块
 ThreadSafeQueue<DataPack> commProcToInfoAnalyQueue; // 指令处理模块-->信息解析模块
@@ -240,13 +245,14 @@ ThreadSafeQueue<DataPack> subDataToCommProcQueue; // 订阅信息-->指令处理
 std::vector<DataPack> students; // 用于存放结构体的vector,模拟数据
 
 // 定义一个使用 DataPack 类型的 priority_queue，使用 std::less 来进行降序排序,存放来自信息解析模块的优先级数据
-ThreadSafePriorityQueue<DataPack*> commProcPriorityQueue;
+ThreadSafePriorityQueue<DataPack> commProcPriorityQueue;
 
-void acceptAndProduce(ThreadSafeQueue<DataPack*>& scsnToInfoAnalyQueue, std::queue<DataPack*>& ptrQueueSCSN);
-void consumeAndDistribute(ThreadSafeQueue<DataPack*>& scsnToInfoAnalyQueue);
-std::queue<DataPack*> generateSimulationData();
-void judgeAndDistribute(DataPack* ptr);
+void acceptAndProduce(ThreadSafeQueue<DataPack>& scsnToInfoAnalyQueue, std::queue<DataPack>& ptrQueueSCSN);
+void consumeAndDistribute(ThreadSafeQueue<DataPack>& scsnToInfoAnalyQueue);
+std::queue<DataPack> generateSimulationData();
+void judgeAndDistribute(DataPack value);
 void infoAnalyListenOther();
 void infoAnalyListenCommProc();
 void commProcListenInfoAnaly();
 void commProcListenSubData();
+void infoAnalyListenscsn(ThreadSafeQueue<DataPack>& scsnQueue, ThreadSafeQueue<DataPack>& scsnToInfoAnalyQueue);

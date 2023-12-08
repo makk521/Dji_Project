@@ -4,7 +4,8 @@
 * @date 2023-12-06
 * @brief 新结构体的main函数
 */
-#include "dataHead.h"
+#include "dataPack.h"
+#include <sys/cdefs.h>
 #include <sys/socket.h>
 #include <cstring>
 #include <string>
@@ -12,7 +13,11 @@
 #include <netinet/in.h>
 
 void receiveData() {
-    // 创建套接字
+    /**
+    * @brief 接收数据函数，并将数据存入scsnQueue
+    * @param None
+    * @return None
+    */
     int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (serverSocket == -1) {
         perror("Error creating socket");
@@ -57,9 +62,6 @@ void receiveData() {
     // 接收和打印数据
     char buffer[1024];
     while (true) {
-        // std::memset(buffer, 0, sizeof(buffer));
-        // int bytesReceived = recv(clientSocket, buffer, sizeof(buffer), 0);
-
         DataPack receivedData;
         int bytesReceived = recv(clientSocket, &receivedData, sizeof(receivedData), 0);
 
@@ -73,8 +75,8 @@ void receiveData() {
             break;
         }
 
-        // std::cout << "接收到的数据: " << buffer << std::endl;
-        std::cout << "接收到的数据: " << receivedData.getPackType() << "Id  : " << receivedData.getDataSheetIdentificationNum() << std::endl;
+        std::cout << "接收到的数据:PackType: " << receivedData.getPackType() << "  Id  : " << receivedData.getDataSheetIdentificationNum() << std::endl;
+        scsnQueue.push(receivedData);
     }
 
     // 关闭套接字
@@ -83,11 +85,7 @@ void receiveData() {
 }
 
 int main() {
-    std::queue<DataPack*> ptrQueueSCSN;
-    ptrQueueSCSN = generateSimulationData();
-
     // 信息解析模块启动
-    std::thread infoAnalyListenscsnThread(acceptAndProduce, std::ref(scsnToInfoAnalyQueue), std::ref(ptrQueueSCSN));
     std::thread infoAnalydistributeThread(consumeAndDistribute, std::ref(scsnToInfoAnalyQueue));
     std::thread infoAnalyListenOtherThread(infoAnalyListenOther);
     std::thread infoAnalyListenCommProcThread(infoAnalyListenCommProc);
@@ -96,95 +94,87 @@ int main() {
     std::thread commProcListenSubDataThread(commProcListenSubData);
 
     std::thread receiveDataThread(receiveData);
-    receiveDataThread.join();
-    infoAnalyListenscsnThread.join();
+    std::thread infoAnalyListenscsnThread(infoAnalyListenscsn, std::ref(scsnQueue), std::ref(scsnToInfoAnalyQueue));
+    
     infoAnalydistributeThread.join();
     infoAnalyListenOtherThread.join();
     infoAnalyListenCommProcThread.join();
     commProcListenInfoAnalyThread.join();
     commProcListenSubDataThread.join();
+    receiveDataThread.join();
+    infoAnalyListenscsnThread.join();
 
     return 0;
 }
 
-std::queue<DataPack*> generateSimulationData(){
+void acceptAndProduce(ThreadSafeQueue<DataPack>& scsnToInfoAnalyQueue,std::queue<DataPack>& scsnQueue) { 
     /**
-    * @brief 生成模拟数据,即从SCSN到信息解析模块的队列（全是指针）
-    * @param None
-    * @return ptrQueueSCSN 放入指针的queue，模拟SCSN发送给信息解析模块的数据
-    */
-    for (int i = 0; i < 12; ++i) {
-        // 创建10个结构体并存入students
-        DataPack makaka;
-        makaka.setPackType(i/3);
-        makaka.setDataSheetIdentificationNum(20 + i);
-        students.push_back(makaka);
-        std::cout << "生成测试元素：" << "PackType:" << makaka.getPackType() << "  DataSheetIdentificationNum :" << makaka.getDataSheetIdentificationNum() << std::endl;
-    }
-
-    std::queue<DataPack*> ptrQueueSCSN;
-    for (auto& makaka : students) {
-        // 将每个结构体的指针存入ptrQueueSCSN
-        DataPack* ptr = &makaka;  // 获取每个元素的地址
-        ptrQueueSCSN.push(ptr);
-        // std::cout << "已存入指针 :" << ptr << std::endl;
-    }
-    return ptrQueueSCSN;
-}
-
-void acceptAndProduce(ThreadSafeQueue<DataPack*>& scsnToInfoAnalyQueue,std::queue<DataPack*>& ptrQueueSCSN) { 
-    /**
-    * @brief 生产者函数，与SCSN交互，将ptrQueueSCSN中的数据（指针）取出放入scsnToInfoAnalyQueue，即信息解析模块中
-    * @param scsnToInfoAnalyQueue 暂存队列放入信息解析模块用于后续处理  ptrQueueSCSN SCSN中的数据源
+    * @brief 生产者函数，与SCSN交互，将scsnQueue中的数据（结构体）取出放入scsnToInfoAnalyQueue，即信息解析模块中
+    * @param scsnToInfoAnalyQueue 暂存队列放入信息解析模块用于后续处理  scsnQueue SCSN中的数据源
     * @return None
     */
     while (true) {
-        if (!ptrQueueSCSN.empty()) {
-            auto& ptr = ptrQueueSCSN.front();
-            scsnToInfoAnalyQueue.push(ptr);
-            ptrQueueSCSN.pop();
+        if (!scsnQueue.empty()) {
+            auto value = scsnQueue.front();
+            scsnToInfoAnalyQueue.push(value);
+            scsnQueue.pop();
             // std::cout << "将元素从SCSN取出放入信息解析模块: " << " packetIdentificationNum: " << ptr->header.packetIdentificationNum << std::endl;
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
     }
 }
 
-void consumeAndDistribute(ThreadSafeQueue<DataPack*>& scsnToInfoAnalyQueue) { 
+void infoAnalyListenscsn(ThreadSafeQueue<DataPack>& scsnQueue, ThreadSafeQueue<DataPack>& scsnToInfoAnalyQueue) {
     /**
-    * @brief 消费者函数，将scsnToInfoAnalyQueue中的数据（指针）取出判断后分发给其他模块
+    * @brief 信息解析模块监听SCSN返回值队列scsnQueue并存入scsnToInfoAnalyQueue
+    * @param scsnToInfoAnalyQueue 暂存队列
+    * @return None
+    */
+    while (true) {
+        if (!scsnQueue.empty()) {
+            DataPack value = scsnQueue.pop();
+            scsnToInfoAnalyQueue.push(value);
+            std::cout << "信息解析模块收到SCSN的数据: " << std::endl;
+        }
+    }
+}
+
+void consumeAndDistribute(ThreadSafeQueue<DataPack>& scsnToInfoAnalyQueue) { 
+    /**
+    * @brief 消费者函数，将scsnToInfoAnalyQueue中的数据（结构体）取出判断后分发给其他模块
     * @param scsnToInfoAnalyQueue 暂存队列
     * @return None
     */
     while (true) {
         if (!scsnToInfoAnalyQueue.empty()) {
-            DataPack* ptr = scsnToInfoAnalyQueue.pop();
-            judgeAndDistribute(ptr); // 判断并分发指针到各个模块
+            DataPack value = scsnToInfoAnalyQueue.pop();
+            judgeAndDistribute(value); // 判断并分发指针到各个模块
             // std::cout << "Consumed: " << "packetType: " << ptr->header.packetType << ", packetIdentificationNum: " << ptr->header.packetIdentificationNum << std::endl;
         }
     }
 }
 
-void judgeAndDistribute(DataPack* ptr){
+void judgeAndDistribute(DataPack value){
     /**
     * @brief 判断数据类型并分发给其他模块
-    * @param ptr 需要分发数据的指针
+    * @param value 需要分发的数据包
     * @return None
     */
-    switch ((*ptr).getPackType()) {
+    switch (value.getPackType()) {
         case 0:
-            infoAnalyToClusterManQueue.push(ptr);
+            infoAnalyToClusterManQueue.push(value);
             std::cout << "已分发到集群管理模块" << std::endl;
             break;
         case 1:
-            infoAnalyToCommProcQueue.push(ptr);
+            infoAnalyToCommProcQueue.push(value);
             std::cout << "已分发到指令处理模块" << std::endl;
             break;
         case 2:
-            infoAnalyToDataProcQueue.push(ptr);
+            infoAnalyToDataProcQueue.push(value);
             std::cout << "已分发到数据处理模块" << std::endl;
             break;
         case 3:
-            infoAnalyToRouteManQueue.push(ptr);
+            infoAnalyToRouteManQueue.push(value);
             std::cout << "已分发到路由管理模块" << std::endl;
             break;
         default:
@@ -229,8 +219,8 @@ void commProcListenInfoAnaly(){
     while (true) {
         // std::cout << "Execute" << std::endl;
         if (!infoAnalyToCommProcQueue.empty()) {
-            DataPack* ptr = infoAnalyToCommProcQueue.pop();
-            commProcPriorityQueue.push(ptr);
+            DataPack value = infoAnalyToCommProcQueue.pop();
+            commProcPriorityQueue.push(value);
             std::cout << "指令处理模块收到信息解析模块的指令并将其传给无人机" << std::endl;
         }
     }

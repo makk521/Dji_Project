@@ -158,7 +158,7 @@ void consumerFun(ThreadSafeQueue<std::string>& sharedQueue, int uavSocket, socka
     // cout << "Post delay 10 seconds" << endl;
     // 连接到无人机
     DataPack dataToSend;
-    dataToSend.setPackType(0b11);
+    dataToSend.setPackType(0b1);
     dataToSend.setDataSheetIdentificationNum(0b111);
     
     if (connect(uavSocket, (struct sockaddr*)&uavAddr, sizeof(uavAddr)) == -1) {
