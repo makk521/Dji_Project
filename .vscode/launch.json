@@ -8,8 +8,8 @@
       "args": [],
       "stopAtEntry": false,
       "externalConsole": true,
-      "cwd": "c:/Users/34511/Documents/GitHub/Dji_Project/ProjectDevelop/Progress/v6",
-      "program": "c:/Users/34511/Documents/GitHub/Dji_Project/ProjectDevelop/Progress/v6/build/Debug/outDebug",
+      "cwd": "c:/Users/34511/Documents/GitHub/Dji_Project/ProjectDevelop/Progress/v7",
+      "program": "c:/Users/34511/Documents/GitHub/Dji_Project/ProjectDevelop/Progress/v7/build/Debug/outDebug",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [
