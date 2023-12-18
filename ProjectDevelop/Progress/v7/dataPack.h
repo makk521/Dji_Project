@@ -166,6 +166,24 @@ struct DataPack {
         uint32_t mask = 0b11111111 << 8;  
         header.lastLine = (header.lastLine & ~mask) | ((value & 0b11111111) << 8); 
     }
+
+    void coutDataPackHeader() {
+        std::cout << "PackType: " << getPackType() << std::endl;
+        std::cout << "Channel: " << getChannel() << std::endl;
+        std::cout << "PacketPriority: " << getPacketPriority() << std::endl;
+        std::cout << "ModuleId: " << getModuleId() << std::endl;
+        std::cout << "PackLength: " << getPackLength() << std::endl;
+        std::cout << "PackOffset: " << getPackOffset() << std::endl;
+        std::cout << "PackSequenceNum: " << getPackSequenceNum() << std::endl;
+        std::cout << "DataSheetIdentificationNum: " << getDataSheetIdentificationNum() << std::endl;
+        std::cout << "TargetId: " << getTargetId() << std::endl;
+        std::cout << "SourceId: " << getSourceId() << std::endl;
+        std::cout << "NextHopId: " << getNextHopId() << std::endl;
+        std::cout << "SingleHopSourceId: " << getSingleHopSourceId() << std::endl;
+        std::cout << "CheckSum: " << getCheckSum() << std::endl;
+        std::cout << "ValidTime: " << getValidTime() << std::endl;
+        std::cout << "ClusterId: " << getClusterId() << std::endl;
+    }
 };
 
 template <typename T>

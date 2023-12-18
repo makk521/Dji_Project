@@ -11,6 +11,8 @@
 #include <string>
 #include <unistd.h>
 #include <netinet/in.h>
+#include <cstring>
+#include <cstdlib>
 
 void receiveData() {
     /**
@@ -60,11 +62,16 @@ void receiveData() {
     std::cout << "客户端连接成功" << std::endl;
 
     // 接收和打印数据
-    char buffer[1024];
     while (true) {
-        DataPack receivedData;
-        int bytesReceived = recv(clientSocket, &receivedData, sizeof(receivedData), 0);
+        DataPack receivedPack;
+        receivedPack.payload = static_cast<char*>(malloc(2000));
+        char *receivedData = static_cast<char*>(malloc(2000));
+        // int bytesReceived = recv(clientSocket, &receivedPack, sizeof(receivedPack), 0);
+        int bytesReceived = recv(clientSocket, receivedData, 2000, 0);
+        memcpy(&receivedPack.header, receivedData, sizeof(receivedPack.header)); //复制头部
 
+        memcpy(receivedPack.payload, receivedData + sizeof(receivedPack.header), receivedPack.getPackLength()); //复制payload
+        
         if (bytesReceived == -1) {
             perror("Error receiving data");
             break;
@@ -74,9 +81,9 @@ void receiveData() {
             std::cout << "客户端断开连接" << std::endl;
             break;
         }
-
-        std::cout << "接收到的数据:PackType: " << receivedData.getPackType() << "  Id  : " << receivedData.getDataSheetIdentificationNum() << std::endl;
-        scsnQueue.push(receivedData);
+        receivedPack.coutDataPackHeader();
+        std::cout << "接收到的数据:receivedPack.payload: " << receivedPack.payload <<  std::endl;
+        scsnQueue.push(receivedPack);
     }
 
     // 关闭套接字
@@ -221,7 +228,7 @@ void commProcListenInfoAnaly(){
         if (!infoAnalyToCommProcQueue.empty()) {
             DataPack value = infoAnalyToCommProcQueue.pop();
             commProcPriorityQueue.push(value);
-            std::cout << "指令处理模块收到信息解析模块的指令并将其传给无人机" << std::endl;
+            std::cout << "指令处理模块收到信息解析模块的指令并将其传给无人机"<< value.payload << std::endl;
         }
     }
 }

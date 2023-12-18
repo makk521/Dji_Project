@@ -19,6 +19,8 @@
 #include <condition_variable>
 #include <string>
 #include "scsnDataHead.h"
+#include <cstring>
+#include <cstdlib>
 
 using json = nlohmann::json;
 using namespace std;
@@ -157,24 +159,59 @@ void consumerFun(ThreadSafeQueue<std::string>& sharedQueue, int uavSocket, socka
     // usleep(10000000);
     // cout << "Post delay 10 seconds" << endl;
     // 连接到无人机
-    DataPack dataToSend;
-    dataToSend.setPackType(0b1);
-    dataToSend.setDataSheetIdentificationNum(0b111);
-    
+    DataPack dataToSendPacK;
+    dataToSendPacK.setPackType(0b1);
+    dataToSendPacK.setChannel(0b1);
+    dataToSendPacK.setPacketPriority(0b1);
+    dataToSendPacK.setModuleId(0b1111);
+    dataToSendPacK.setPackLength(0b1);
+    dataToSendPacK.setPackOffset(0b1);
+    dataToSendPacK.setPackSequenceNum(0b1);
+    dataToSendPacK.setPackSequenceNum(0b1);
+    dataToSendPacK.setDataSheetIdentificationNum(0b1);
+    dataToSendPacK.setTargetId(0b1);
+    dataToSendPacK.setSourceId(0b1);
+    dataToSendPacK.setNextHopId(0b1);
+    dataToSendPacK.setSingleHopSourceId(0b1);
+    dataToSendPacK.setCheckSum(0b1);
+    dataToSendPacK.setClusterId(0b1);
+
+    char *dataToSend = static_cast<char*>(malloc(2000));
+    // dataToSendPacK.payload = static_cast<char*>(malloc(200)); 
+
     if (connect(uavSocket, (struct sockaddr*)&uavAddr, sizeof(uavAddr)) == -1) {
         perror("Error connecting to server");
         close(uavSocket);
         return ;
     }
     while (true) {
-        std::string value = sharedQueue.pop(); 
-        int bytesSent = send(uavSocket, &dataToSend, sizeof(dataToSend), 0);
+        std::string value = sharedQueue.pop(); // 取出未处理的字符串{'uid': '2', 'uavType': '', 'action': 'takeoff', 'params': [], 'commandNum': ''}
+        std::replace(value.begin(), value.end(), '\'', '\"'); // 将'转"使得可以转为json格式
+        json valueJson = json::parse(value);
+        json payloadJson; // 将value中有用的数据存到string中
+        payloadJson["action"] = valueJson["action"];
+        payloadJson["params"] = valueJson["params"];
+        payloadJson["commandNum"] = valueJson["commandNum"];
+        std::string payloadString = payloadJson.dump();
+
+        dataToSendPacK.setPackLength(payloadString.length()); // 设置长度
+        
+        memcpy(dataToSend, &dataToSendPacK.header, sizeof(dataToSendPacK.header)); // 将头部复制到dataToSend中（在此之前封装完成）
+        DataPack temp; // 暂时的，展示发送的数据是否符合要求
+        memcpy(&temp.header, dataToSend, sizeof(temp.header)); // 将发送的数据(包头部分)复制一份，检查是否发送正确
+        // 将指令信息memcpy到dataToSend中
+        memcpy(dataToSend + sizeof(dataToSendPacK.header), payloadString.c_str(), payloadString.length()); // 长度注意改！！！
+        
+        // int bytesSent = send(uavSocket, &dataToSendPacK, sizeof(dataToSendPacK), 0);
+        int bytesSent = send(uavSocket, dataToSend, 2000, 0);  // int socket, const void *buffer, size_t length, int flags
         std::cout << "已发送" << std::endl;
         if (bytesSent == -1) {
             perror("Error sending data");
             break;
         }
-        std::cout << "发送数据: " << dataToSend.getPackType() << " Id  : " << dataToSend.getDataSheetIdentificationNum() << std::endl;
+        temp.coutDataPackHeader();
+        std::cout << "发送数据Id" << temp.getDataSheetIdentificationNum() << std::endl;
+        // std::cout << "发送数据: " << dataToSendPacK.getPackType() << " Id  : " << dataToSendPacK.getDataSheetIdentificationNum() << std::endl;
         std::cout << "Sent data: " << value << std::endl;
     }
 }
