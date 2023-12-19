@@ -237,7 +237,7 @@ public:
     T pop() {
         std::unique_lock<std::mutex> lock(mutex);
         condition_variable.wait(lock, [this] { return !priorityQueue.empty(); });
-        T value = priorityQueue.front();
+        T value = priorityQueue.top();
         priorityQueue.pop();
         return value;
     }
