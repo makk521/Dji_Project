@@ -104,6 +104,14 @@
     "typeinfo": "cpp",
     "cstring": "cpp",
     "functional": "cpp",
-    "iterator": "cpp"
+    "iterator": "cpp",
+    "any": "cpp",
+    "codecvt": "cpp",
+    "forward_list": "cpp",
+    "map": "cpp",
+    "numeric": "cpp",
+    "future": "cpp",
+    "iomanip": "cpp",
+    "valarray": "cpp"
   }
 }
