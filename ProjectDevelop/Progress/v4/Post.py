@@ -8,7 +8,7 @@ dataSend = {
     "uavType":"", #无人机类型 大疆=dji
     "action": "takeoff", #arm disarm takeoff land move gohome setGohomeHeight
     "params": [1,1,1,3], #takeoff:x,y,z,yaw(float xyz轴位移，无人机机头朝向) setGohomeHeight:height    
-    "commandNum":5, #唯一命令编号
+    "commandNum":8, #唯一命令编号
     "timeStamp": 46523164613 , #时间戳
     "priority": '1', #1正常排队执行，2是插队优先执行（下一个执行），3是中断（停止当前指令立即执行）
     "reserve":"", #保留位

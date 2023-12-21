@@ -175,3 +175,39 @@ struct DataPack {
         std::cout << "ClusterId: " << getClusterId() << std::endl;
     }
 };
+
+/**
+* @brief 队列模板,重写pop与push指令,支持定义的队列存取int、string等基本数据类型
+* @param None
+* @return None
+*/
+template <typename T>
+class ThreadSafeQueue {
+public:
+    ThreadSafeQueue() = default;
+
+    bool empty() const {
+            std::lock_guard<std::mutex> lock(mutex);
+            return queue.empty();
+        }
+    // 向队列中推送数据
+    void push(const T& value) {
+        std::lock_guard<std::mutex> lock(mutex);
+        queue.push(value);
+        condition_variable.notify_one();
+    }
+
+    // 从队列中弹出数据
+    T pop() {
+        std::unique_lock<std::mutex> lock(mutex);
+        condition_variable.wait(lock, [this] { return !queue.empty(); });
+        T value = queue.front();
+        queue.pop();
+        return value;
+    }
+
+private:
+    std::queue<T> queue;  // Use std::queue to store data
+    mutable std::mutex mutex;
+    std::condition_variable condition_variable;
+};

@@ -1,0 +1,243 @@
+/*! @file flight-control/main.cpp
+ *  @version 4.0.0
+ *  @date Jun 05 2017
+ *
+ *  @brief
+ *  main for Flight Control API usage in a Linux environment.
+ *  Provides a number of helpful additions to core API calls,
+ *  especially for position control, attitude control, takeoff,
+ *  landing.
+ *
+ *  @Copyright (c) 2016-2017 DJI
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ */
+
+/*TODO:flight_control_sample will by replace by flight_sample in the future*/
+// #include "flight_control_sample.hpp"
+#include "flight_sample.hpp"
+#include "dji_linux_helpers.hpp"
+
+using namespace DJI::OSDK;
+using namespace DJI::OSDK::Telemetry;
+
+void ObtainJoystickCtrlAuthorityCB(ErrorCode::ErrorCodeType errorCode, UserData userData)
+{
+  if (errorCode == ErrorCode::FlightControllerErr::SetControlParam::ObtainJoystickCtrlAuthoritySuccess)
+  {
+    DSTATUS("ObtainJoystickCtrlAuthoritySuccess");
+  }
+}
+
+void ReleaseJoystickCtrlAuthorityCB(ErrorCode::ErrorCodeType errorCode, UserData userData)
+{
+  if (errorCode == ErrorCode::FlightControllerErr::SetControlParam::ReleaseJoystickCtrlAuthoritySuccess)
+  {
+    DSTATUS("ReleaseJoystickCtrlAuthoritySuccess");
+  }
+}
+void getValueFromTypeMap(const Quaternion& value){
+  std::cout<<"Quaternion:"<<value.q0<<' '<<value.q1<<' '<<value.q2<<' '<<value.q3<<'\n';
+}
+void getValueFromTypeMap(const Vector3f& value){
+  std::cout<<"Vector3f:"<<value.x<<' '<<value.y<<' '<<value.z<<'\n';
+}
+void getValueFromTypeMap(const VelocityInfo& value){
+  std::cout<<"VelocityInfo:"<<value.health<<' '<<value.reserve<<'\n';
+}
+void getValueFromTypeMap(const Velocity& value){
+  std::cout<<"Velocity structed by Vector3f and VelocityInfo:"<<'\n';
+  getValueFromTypeMap(value.data);
+  getValueFromTypeMap(value.info);
+}
+void getValueFromTypeMap(const float& value){
+  std::cout<<"float32_t:"<<value<<'\n';
+}
+void getValueFromTypeMap(const double& value){
+  std::cout<<"float32_t:"<<value<<'\n';
+}
+void getValueFromTypeMap(const GPSFused& value){
+  // getValueFromTypeMap(value.latitude);
+  // getValueFromTypeMap(value.longitude);
+  // getValueFromTypeMap(value.altitude);
+  std::cout<<"GPSFused:"<<value.latitude<<' '<<value.longitude<<' '<<value.altitude<<' '<<value.visibleSatelliteNumber<<'\n';
+}
+int main(int argc, char** argv) {
+  // Initialize variables
+  int functionTimeout = 1;
+
+  // Setup OSDK.
+  LinuxSetup linuxEnvironment(argc, argv);
+  Vehicle* vehicle = linuxEnvironment.getVehicle();
+  if (vehicle == NULL) {
+    std::cout << "Vehicle not initialized, exiting.\n";
+    return -1;
+  }
+
+
+  // Obtain Control Authority
+  // ErrorCode::ErrorCodeType ret = vehicle->flightController->obtainJoystickCtrlAuthoritySync(functionTimeout);
+  vehicle->flightController->obtainJoystickCtrlAuthorityAsync(ObtainJoystickCtrlAuthorityCB, nullptr ,functionTimeout, 2);
+  FlightSample* flightSample = new FlightSample(vehicle);
+
+  int timeout = 1;
+  int pkgIndex = 0;
+  int freq = 10;
+  TopicName topicList10Hz[] = {TOPIC_STATUS_FLIGHT, TOPIC_STATUS_DISPLAYMODE};
+  int topicSize = sizeof(topicList10Hz) / sizeof(topicList10Hz[0]);
+  flightSample->setUpSubscription(pkgIndex, freq, topicList10Hz, topicSize, timeout);
+
+  while(1){
+    std::cout << "cmdType:\n";
+    // 0解锁、1上锁、2起飞、3降落、4指点飞行、5返航、6设置返航高度
+    int cmdType;
+    std::cin >> cmdType;
+     switch (cmdType) {
+      case 0:
+      {
+        // 解锁
+        std::cout << "dis arm\n";
+        vehicle->control->disArmMotors();
+        break;
+      }
+      case 1:
+      {
+        // 上锁
+        std::cout << "arm\n";
+        vehicle->control->armMotors();
+        break;
+      }
+      case 2:
+      {
+        // 起飞
+        std::cout << "takeoff\n";
+        flightSample->monitoredTakeoff();
+        break;
+      }
+      case 3:
+      {
+        // 降落
+        std::cout << "land\n";
+        flightSample->monitoredLanding();
+        break;
+      }
+      case 4:
+      {
+        // 指点飞行
+        std::cout << "move:please input x,y,z,yaw offset\n";
+        float nums[4];
+        for (int i = 0; i < 4; i++) {
+          std::cout << "请输入第 " << i+1 << " 个数：";
+          std::cin >> nums[i];
+        }
+        flightSample->moveByPositionOffset((FlightSample::Vector3f){nums[0], nums[1], nums[2]}, nums[3], 0.8, 1);
+        break;
+      }
+      case 5:
+      {
+        // 返航
+        std::cout << "go home\n";
+        flightSample->goHomeAndConfirmLanding();
+        break;
+      }
+      case 6:
+      {
+        // 设置返航高度
+        std::cout << "set go home altitude:please input altitude\n";
+        float height;
+        std::cin >> height;
+        flightSample->setGoHomeAltitude(height);
+        break;
+      }
+      case 100:
+      {
+        
+        // 设置返航高度
+        std::cout << "get value\n";
+        
+        getValueFromTypeMap(vehicle->subscribe->getValue<TOPIC_QUATERNION>());
+        getValueFromTypeMap(vehicle->subscribe->getValue<TOPIC_ACCELERATION_GROUND>());
+        getValueFromTypeMap(vehicle->subscribe->getValue<TOPIC_ACCELERATION_BODY>());
+        getValueFromTypeMap(vehicle->subscribe->getValue<TOPIC_ACCELERATION_RAW>());
+        getValueFromTypeMap(vehicle->subscribe->getValue<TOPIC_VELOCITY>());
+        getValueFromTypeMap(vehicle->subscribe->getValue<TOPIC_ANGULAR_RATE_FUSIONED>());
+        getValueFromTypeMap(vehicle->subscribe->getValue<TOPIC_ANGULAR_RATE_RAW>());
+        getValueFromTypeMap(vehicle->subscribe->getValue<TOPIC_ALTITUDE_FUSIONED>());
+        getValueFromTypeMap(vehicle->subscribe->getValue<TOPIC_ALTITUDE_BAROMETER>());
+        getValueFromTypeMap(vehicle->subscribe->getValue<TOPIC_ALTITUDE_OF_HOMEPOINT>());
+        getValueFromTypeMap(vehicle->subscribe->getValue<TOPIC_HEIGHT_FUSION>());
+        // std::cout << "TOPIC_QUATERNION:"<< vehicle->subscribe->getValue<TOPIC_QUATERNION>()<< "\n";
+        // std::cout << "TOPIC_ACCELERATION_GROUND:" << vehicle->subscribe->getValue<TOPIC_ACCELERATION_GROUND>()<< "\n";
+        // std::cout << "TOPIC_ACCELERATION_BODY:" << vehicle->subscribe->getValue<TOPIC_ACCELERATION_BODY>()<< "\n";
+        // std::cout << "TOPIC_ACCELERATION_RAW:" << vehicle->subscribe->getValue<TOPIC_ACCELERATION_RAW>()<< "\n";
+        // std::cout << "TOPIC_VELOCITY:" << vehicle->subscribe->getValue<TOPIC_VELOCITY>()<< "\n";
+        // std::cout << "TOPIC_ANGULAR_RATE_FUSIONED:" << vehicle->subscribe->getValue<TOPIC_ANGULAR_RATE_FUSIONED>()<< "\n";
+        // std::cout << "TOPIC_ANGULAR_RATE_RAW:" << vehicle->subscribe->getValue<TOPIC_ANGULAR_RATE_RAW>()<< "\n";
+        // std::cout << "TOPIC_ALTITUDE_FUSIONED:" << vehicle->subscribe->getValue<TOPIC_ALTITUDE_FUSIONED>()<< "\n";
+        // std::cout << "TOPIC_ALTITUDE_BAROMETER:" << vehicle->subscribe->getValue<TOPIC_ALTITUDE_BAROMETER>()<< "\n";
+        // std::cout << "TOPIC_ALTITUDE_OF_HOMEPOINT:" << vehicle->subscribe->getValue<TOPIC_ALTITUDE_OF_HOMEPOINT>()<< "\n";
+        // std::cout << "TOPIC_HEIGHT_FUSION:" << vehicle->subscribe->getValue<TOPIC_HEIGHT_FUSION>()<< "\n";
+        // std::cout << "TOPIC_GPS_DATE:" << vehicle->subscribe->getValue<TOPIC_GPS_DATE>()<< "\n";
+        // std::cout << "TOPIC_GPS_TIME:" << vehicle->subscribe->getValue<TOPIC_GPS_TIME>()<< "\n";
+        // std::cout << "TOPIC_GPS_POSITION:" << vehicle->subscribe->getValue<TOPIC_GPS_POSITION>()<< "\n";
+        // std::cout << "TOPIC_GPS_VELOCITY:" << vehicle->subscribe->getValue<TOPIC_GPS_VELOCITY>()<< "\n";
+        // std::cout << "TOPIC_GPS_DETAILS:" << vehicle->subscribe->getValue<TOPIC_GPS_DETAILS>()<< "\n";
+        // std::cout << "TOPIC_RTK_POSITION:" << vehicle->subscribe->getValue<TOPIC_RTK_POSITION>()<< "\n";
+        // std::cout << "TOPIC_RTK_VELOCITY:" << vehicle->subscribe->getValue<TOPIC_RTK_VELOCITY>()<< "\n";
+        // std::cout << "TOPIC_RTK_YAW:" << vehicle->subscribe->getValue<TOPIC_RTK_YAW>()<< "\n";
+        // std::cout << "TOPIC_RTK_POSITION_INFO:" << vehicle->subscribe->getValue<TOPIC_RTK_POSITION_INFO>()<< "\n";
+        // std::cout << "TOPIC_RTK_YAW_INFO:" << vehicle->subscribe->getValue<TOPIC_RTK_YAW_INFO>()<< "\n";
+        // std::cout << "TOPIC_COMPASS:" << vehicle->subscribe->getValue<TOPIC_COMPASS>()<< "\n";
+        // std::cout << "TOPIC_RC:" << vehicle->subscribe->getValue<TOPIC_RC>()<< "\n";
+        // std::cout << "TOPIC_GIMBAL_ANGLES:" << vehicle->subscribe->getValue<TOPIC_GIMBAL_ANGLES>()<< "\n";
+        // std::cout << "TOPIC_GIMBAL_STATUS:" << vehicle->subscribe->getValue<TOPIC_GIMBAL_STATUS>()<< "\n";
+        // std::cout << "TOPIC_STATUS_FLIGHT:" << vehicle->subscribe->getValue<TOPIC_STATUS_FLIGHT>()<< "\n";
+        // std::cout << "TOPIC_STATUS_DISPLAYMODE:" << vehicle->subscribe->getValue<TOPIC_STATUS_DISPLAYMODE>()<< "\n";
+        // std::cout << "TOPIC_STATUS_LANDINGGEAR:" << vehicle->subscribe->getValue<TOPIC_STATUS_LANDINGGEAR>()<< "\n";
+        // std::cout << "TOPIC_STATUS_MOTOR_START_ERROR:" << vehicle->subscribe->getValue<TOPIC_STATUS_MOTOR_START_ERROR>()<< "\n";
+        // std::cout << "TOPIC_BATTERY_INFO:" << vehicle->subscribe->getValue<TOPIC_BATTERY_INFO>()<< "\n";
+        // std::cout << "TOPIC_CONTROL_DEVICE:" << vehicle->subscribe->getValue<TOPIC_CONTROL_DEVICE>()<< "\n";
+        // std::cout << "TOPIC_HARD_SYNC:" << vehicle->subscribe->getValue<TOPIC_HARD_SYNC>()<< "\n";
+        // std::cout << "TOPIC_GPS_SIGNAL_LEVEL:" << vehicle->subscribe->getValue<TOPIC_GPS_SIGNAL_LEVEL>()<< "\n";
+        // std::cout << "TOPIC_GPS_CONTROL_LEVEL:" << vehicle->subscribe->getValue<TOPIC_GPS_CONTROL_LEVEL>()<< "\n";
+        // std::cout << "TOPIC_RC_FULL_RAW_DATA:" << vehicle->subscribe->getValue<TOPIC_RC_FULL_RAW_DATA>()<< "\n";
+        // std::cout << "TOPIC_RC_WITH_FLAG_DATA:" << vehicle->subscribe->getValue<TOPIC_RC_WITH_FLAG_DATA>()<< "\n";
+        // std::cout << "TOPIC_ESC_DATA:" << vehicle->subscribe->getValue<TOPIC_ESC_DATA>()<< "\n";
+        // std::cout << "TOPIC_RTK_CONNECT_STATUS:" << vehicle->subscribe->getValue<TOPIC_RTK_CONNECT_STATUS>()<< "\n";
+        // std::cout << "TOPIC_GIMBAL_CONTROL_MODE:" << vehicle->subscribe->getValue<TOPIC_GIMBAL_CONTROL_MODE>()<< "\n";
+        // std::cout << "TOPIC_FLIGHT_ANOMALY:" << vehicle->subscribe->getValue<TOPIC_FLIGHT_ANOMALY>()<< "\n";
+        // std::cout << "TOPIC_POSITION_VO:" << vehicle->subscribe->getValue<TOPIC_POSITION_VO>()<< "\n";
+        // std::cout << "TOPIC_AVOID_DATA:" << vehicle->subscribe->getValue<TOPIC_AVOID_DATA>()<< "\n";
+        // std::cout << "TOPIC_HOME_POINT_SET_STATUS:" << vehicle->subscribe->getValue<TOPIC_HOME_POINT_SET_STATUS>()<< "\n";
+        // std::cout << "TOPIC_HOME_POINT_INFO:" << vehicle->subscribe->getValue<TOPIC_HOME_POINT_INFO>()<< "\n";
+        // std::cout << "TOPIC_DUAL_GIMBAL_DATA:" << vehicle->subscribe->getValue<TOPIC_DUAL_GIMBAL_DATA>()<< "\n";
+        // std::cout << "TOPIC_THREE_GIMBAL_DATA:" << vehicle->subscribe->getValue<TOPIC_THREE_GIMBAL_DATA>()<< "\n";
+        break;
+      }
+      default:
+        break;
+    }
+  }
+
+  // ret = vehicle->flightController->releaseJoystickCtrlAuthoritySync(functionTimeout);
+  vehicle->flightController->releaseJoystickCtrlAuthorityAsync(ReleaseJoystickCtrlAuthorityCB, nullptr ,functionTimeout, 2);
+  delete flightSample;
+  return 0;
+}

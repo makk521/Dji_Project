@@ -18,46 +18,20 @@
 #include <mutex>
 #include <condition_variable>
 #include <string>
-#include "scsnDataHead.h"
 #include <cstring>
 #include <cstdlib>
+#include <algorithm>
+#include "Mobility.hpp"
 
 using json = nlohmann::json;
 using namespace std;
 
-const int RECEIVEPORT = 5001;   //socket开放端口
+const int RECEIVEFROMPYTHONPORT = 5001;   // 对python的开放端口
+const int RECEIVEFROMCPORT = 5002; // 对c++的开放端口
+const int uavPackType[] = {0, 1, 2}; //无人机返回数据包的type
 
-/**
-* @brief 队列模板,重写pop与push指令,支持定义的队列存取int、string等基本数据类型
-* @param None
-* @return None
-*/
-template <typename T>
-class ThreadSafeQueue {
-public:
-    ThreadSafeQueue() = default;
-
-    // 向队列中推送数据
-    void push(const T& value) {
-        std::lock_guard<std::mutex> lock(mutex);
-        queue.push(value);
-        condition_variable.notify_one();
-    }
-
-    // 从队列中弹出数据
-    T pop() {
-        std::unique_lock<std::mutex> lock(mutex);
-        condition_variable.wait(lock, [this] { return !queue.empty(); });
-        T value = queue.front();
-        queue.pop();
-        return value;
-    }
-
-private:
-    std::queue<T> queue;  // Use std::queue to store data
-    std::mutex mutex;
-    std::condition_variable condition_variable;
-};
+ThreadSafeQueue<DataPack> mobilityQueue; // 存放来自右侧的移动性管理模块数据
+ThreadSafeQueue<DataPack> uavSubQueue; // 存放来自无人机的返回数据
 
 void postData(int clientSocket, sockaddr_in serverAddr){
     /**
@@ -142,12 +116,6 @@ void receiveData(int serverSocket, sockaddr_in serverAddr, ThreadSafeQueue<std::
     close(clientSocket);
 }
 
-struct MyStruct {
-    int intValue;
-    float floatValue;
-    char stringValue[20];
-};
-
 void consumerFun(ThreadSafeQueue<std::string>& sharedQueue, int uavSocket, sockaddr_in uavAddr) {
     /**
     * @brief 一直等待shareQueue中的数据,将其取出(无人机指令及参数)，理论上是被处理后的只剩下指令与参数的字符串，转成指定格式传给无人机执行即可
@@ -216,7 +184,7 @@ void consumerFun(ThreadSafeQueue<std::string>& sharedQueue, int uavSocket, socka
     }
 }
 
-void receiveCData(int HOST) {
+void receiveCData(int HOST, ThreadSafeQueue<DataPack>& mobilityQueue, ThreadSafeQueue<DataPack>& uavSubQueue) {
     /**
     * @brief 接收来自c++的数据，并将数据存入scsnQueue
     * @param HOST 开放的端口号
@@ -286,7 +254,17 @@ void receiveCData(int HOST) {
         }
         receivedPack.coutDataPackHeader();
         std::cout << "接收到的数据:receivedPack.payload: " << receivedPack.payload <<  std::endl;
-        // scsnQueue.push(receivedPack);
+        if(receivedPack.getPackType() == 9){  // !!! 需要改
+            mobilityQueue.push(receivedPack);  // 存进移动管理队列 
+        }
+        
+        else if(find(begin(uavPackType), end(uavPackType), receivedPack.getPackType()) != end(uavPackType)){
+            uavSubQueue.push(receivedPack);  // 存进无人机队列
+        }
+        else{
+            std::cout << "接收到的数据类型错误" << std::endl;
+        }
+        free(receivedData);
     }
 
     // 关闭套接字
@@ -294,6 +272,37 @@ void receiveCData(int HOST) {
     close(serverSocket);
 }
 
+void listenMobilityQueue(ThreadSafeQueue<DataPack>& mobilityQueue){
+    /**
+    * @brief 监听移动性管理函数，将mobilityQueue中的数据（结构体）取出并进行操作
+    * @param mobilityQueue 移动管理数据队列
+    * @return None
+    */
+    while (true) {
+        if (!mobilityQueue.empty()) {
+            DataPack value = mobilityQueue.pop();
+            std::cout << "取出移动性管理模块数据并释放" << value.payload << std::endl;
+            IPupdate_SaveToRedis(value);
+            free(value.payload); 
+            std::cout << "ID为1的无人机IP地址："  << Read_UAVinfo_IP(1) <<std::endl;
+        }
+    }
+}
+
+void listenUavDataQueue(ThreadSafeQueue<DataPack>& uavSubQueue){
+    /**
+    * @brief 监听无人机数据函数，将uavSubQueue中的数据（结构体）取出并进行操作
+    * @param uavSubQueue 无人机返回数据
+    * @return Nome
+    */
+    while (true) {
+        if (!uavSubQueue.empty()) {
+            DataPack value = uavSubQueue.pop();
+            std::cout << "取出无人机返回数据并释放" << value.payload << std::endl;
+            free(value.payload); 
+        }
+    }
+}
 
 int main() {
     /**
@@ -336,17 +345,23 @@ int main() {
     // 绑定IP地址和端口
     sockaddr_in serverAddrReceiver;
     serverAddrReceiver.sin_family = AF_INET;
-    serverAddrReceiver.sin_port = htons(RECEIVEPORT); // 使用端口5001
+    serverAddrReceiver.sin_port = htons(RECEIVEFROMPYTHONPORT); // 使用端口5001
     serverAddrReceiver.sin_addr.s_addr = INADDR_ANY; // 监听所有网卡上的连接
 
-    thread posterThread(postData, clientSocketPoster, serverAddrPoster);
-    thread receiverPythonThread(receiveData, serverSocketReceiver, serverAddrReceiver, std::ref(sharedCommandQueue));
-    thread consumerThread(consumerFun, std::ref(sharedCommandQueue), uavSocketPoster, uavAddrPoster);
-    thread receiveCDataThread(receiveCData, 8002); // 开放端口8002
+    std::thread posterThread(postData, clientSocketPoster, serverAddrPoster);
+    std::thread receiverPythonThread(receiveData, serverSocketReceiver, serverAddrReceiver, std::ref(sharedCommandQueue));
+    std::thread consumerThread(consumerFun, std::ref(sharedCommandQueue), uavSocketPoster, uavAddrPoster);
+    std::thread receiveCDataThread(receiveCData, RECEIVEFROMCPORT, std::ref(mobilityQueue), std::ref(uavSubQueue)); // 开放端口5002
+    std::thread listenMobilityQueueThread(listenMobilityQueue, std::ref(mobilityQueue));
+    std::thread listenUavDataQueueThread(listenUavDataQueue, std::ref(uavSubQueue));
+
     // 等待接收线程完成
     receiverPythonThread.join();
     posterThread.join();
+    consumerThread.join();
     receiveCDataThread.join();
+    listenMobilityQueueThread.join();
+    listenUavDataQueueThread.join();
     // 关闭 Socket
     close(clientSocketPoster);
     close(serverSocketReceiver);
