@@ -21,6 +21,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <algorithm>
+#include <curl/curl.h>
 #include "Mobility.hpp"
 
 using json = nlohmann::json;
@@ -29,9 +30,61 @@ using namespace std;
 const int RECEIVEFROMPYTHONPORT = 5001;   // 对python的开放端口
 const int RECEIVEFROMCPORT = 5002; // 对c++的开放端口
 const int uavPackType[] = {0, 1, 2}; //无人机返回数据包的type
+const string CALLBACKURL = "http://192.168.10.83:8005/foo/";  // 前端回调函数地址
+
 
 ThreadSafeQueue<DataPack> mobilityQueue; // 存放来自右侧的移动性管理模块数据
 ThreadSafeQueue<DataPack> uavSubQueue; // 存放来自无人机的返回数据
+
+// Callback function to handle server response
+size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* output) {
+    size_t total_size = size * nmemb;
+    output->append((char*)contents, total_size);
+    return total_size;
+}
+
+// Function to make a POST request
+bool performPostRequest(const std::string& url, const std::string& postData, std::string& response) {
+    // Initialize libcurl
+    if (curl_global_init(CURL_GLOBAL_DEFAULT) != CURLE_OK) {
+        std::cerr << "Failed to initialize libcurl." << std::endl;
+        return false;
+    }
+
+    // Create a CURL object
+    CURL* curl = curl_easy_init();
+    if (curl) {
+        // Set request URL
+        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+
+        // Set POST data
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData.c_str());
+
+        // Set write callback function to handle server response
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+
+        // Perform the request
+        CURLcode res = curl_easy_perform(curl);
+        if (res != CURLE_OK) {
+            std::cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << std::endl;
+            curl_easy_cleanup(curl);
+            curl_global_cleanup();
+            return false;
+        }
+
+        // Cleanup CURL object
+        curl_easy_cleanup(curl);
+    } else {
+        std::cerr << "Failed to initialize libcurl." << std::endl;
+        curl_global_cleanup();
+        return false;
+    }
+
+    // Cleanup libcurl
+    curl_global_cleanup();
+    return true;
+}
 
 void postData(int clientSocket, sockaddr_in serverAddr){
     /**
@@ -252,12 +305,22 @@ void receiveCData(int HOST, ThreadSafeQueue<DataPack>& mobilityQueue, ThreadSafe
             std::cout << "客户端断开连接" << std::endl;
             break;
         }
-        receivedPack.coutDataPackHeader();
+        // receivedPack.coutDataPackHeader();
         std::cout << "接收到的数据:receivedPack.payload: " << receivedPack.payload <<  std::endl;
-        if(receivedPack.getPackType() == 9){  // !!! 需要改
-            mobilityQueue.push(receivedPack);  // 存进移动管理队列 
+        std::cout << "接收到的数据:receivedPack.getPackType(): " << receivedPack.getPackType() <<  std::endl;
+
+        if(receivedPack.getPackType() == 9){
+            mobilityQueue.push(receivedPack);  // 存进移动管理队列
         }
-        
+        else if(receivedPack.getPackType() == 1){
+            std::string response;
+            std::string postData = receivedPack.payload;
+            if (performPostRequest(CALLBACKURL, postData, response)) {
+                std::cout << "回调函数传输成功，返回为: " << response << std::endl;
+            }else{
+                std::cout << "回调函数传输错误." << std::endl;
+            }
+        }
         else if(find(begin(uavPackType), end(uavPackType), receivedPack.getPackType()) != end(uavPackType)){
             uavSubQueue.push(receivedPack);  // 存进无人机队列
         }
@@ -284,7 +347,7 @@ void listenMobilityQueue(ThreadSafeQueue<DataPack>& mobilityQueue){
             std::cout << "取出移动性管理模块数据并释放" << value.payload << std::endl;
             IPupdate_SaveToRedis(value);
             free(value.payload); 
-            std::cout << "ID为1的无人机IP地址："  << Read_UAVinfo_IP(1) <<std::endl;
+            std::cout << "[Mobility]ID为1的无人机IP地址："  << Read_UAVinfo_IP(1) <<std::endl;
         }
     }
 }
