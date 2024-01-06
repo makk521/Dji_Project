@@ -402,7 +402,7 @@ DataPack Pack_send(std::string sub_info){
 }
 void Pack_mobilityA(string uav_info,DataPack *dp){
     int len=uav_info.length();
-    dp->setPackLength(224+(len+1)*8);//设置包长度，单位为bit
+    dp->setPackLength(len+1);//设置包长度，单位为bit
     //dp->payload = (char*)uav_info.c_str();
     dp->payload = new char[len+1];
     strcpy(dp->payload,uav_info.c_str());
@@ -649,6 +649,7 @@ int order(int argc, char** argv, ThreadSafePriorityQueue<DataPack>& commProcPrio
     //switch (std::stoi(std::string(payloadJson["commandNum"])))
     // int commandNum = std::stoi(payloadJson["commandNum"].get<std::string>());
     // int commandNum = payloadJson["commandNum"].get<int>();
+    std::string message = "null";
     std::string uid = payloadJson["uid"].get<std::string>();
     std::string action = payloadJson["action"].get<std::string>();
     std::string cmdNum = payloadJson["commandNum"].get<std::string>();
@@ -662,7 +663,7 @@ int order(int argc, char** argv, ThreadSafePriorityQueue<DataPack>& commProcPrio
         vehicle->control->disArmMotors();
         flightStatus = 1;
         std::string statusM = "1";// 用于存储状态信息的字符串
-        std::string statusMsg = "{cmdNum:" + cmdNum + "," + "uid:" + uid + "," + "action:" + action + "," + "timeStamp:" + timeStamp +  "," + "message:" + statusM + "}";
+        std::string statusMsg = "cmdNum:" + cmdNum + "," + "timestamp:" + getCurrentDateTime() +  "," + "code:" + statusM + "," + "message:" + message;
         DataPack *dp;
         dp = new DataPack();
         dp->setPackType(1);
@@ -679,7 +680,7 @@ int order(int argc, char** argv, ThreadSafePriorityQueue<DataPack>& commProcPrio
         vehicle->control->armMotors();
         flightStatus = 2;
         std::string statusM = "1";// 用于存储状态信息的字符串
-        std::string statusMsg = "{cmdNum:" + cmdNum + "," + "uid:" + uid + "," + "action:" + action + "," + "timeStamp:" + timeStamp +  "," + "message:" + statusM + "}";
+        std::string statusMsg = "cmdNum:" + cmdNum + "," + "timestamp:" + getCurrentDateTime() +  "," + "code:" + statusM + "," + "message:" + message;
         DataPack *dp;
         dp = new DataPack();
         dp->setPackType(1);
@@ -709,7 +710,7 @@ int order(int argc, char** argv, ThreadSafePriorityQueue<DataPack>& commProcPrio
         while (status != std::future_status::ready) {
             // std::cout << "指令正在执行..." << std::endl;
             std::string statusM = "2";// 用于存储状态信息的字符串
-            std::string statusMsg = "{cmdNum:" + cmdNum + "," + "uid:" + uid + "," + "action:" + action + "," + "timeStamp:" + timeStamp +  "," + "message:" + statusM + "}";
+            std::string statusMsg = "cmdNum:" + cmdNum + "," + "timestamp:" + getCurrentDateTime() +  "," + "code:" + statusM + "," + "message:" + message;
             std::cout << statusMsg << std::endl;
             // DataPack Ies = Pack_send(statusMsg);//指令执行情况的包Ies
             // subDataToCommProcQueue.push(Ies);
@@ -728,12 +729,12 @@ int order(int argc, char** argv, ThreadSafePriorityQueue<DataPack>& commProcPrio
         if (executionResult) {
             // std::cout << "函数执行成功！" << std::endl;
             std::string statusM = "1";// 用于存储状态信息的字符串
-            std::string statusMsg = "{cmdNum:" + cmdNum + "," + "uid:" + uid + "," + "action:" + action + "," + "timeStamp:" + timeStamp +  "," + "message:" + statusM + "}";
+            std::string statusMsg = "cmdNum:" + cmdNum + "," + "timestamp:" + getCurrentDateTime() +  "," + "code:" + statusM + "," + "message:" + message;
             std::cout << statusMsg << std::endl;
         } else {
             // std::cout << "函数执行失败或超时！" << std::endl;
             std::string statusM = "0";// 用于存储状态信息的字符串
-            std::string statusMsg = "{cmdNum:" + cmdNum + "," + "uid:" + uid + "," + "action:" + action + "," + "timeStamp:" + timeStamp +  "," + "message:" + statusM + "}";
+            std::string statusMsg = "cmdNum:" + cmdNum + "," + "timestamp:" + getCurrentDateTime() +  "," + "code:" + statusM + "," + "message:" + message;
             std::cout << statusMsg << std::endl;
         }
         DataPack *dp;
@@ -764,7 +765,7 @@ int order(int argc, char** argv, ThreadSafePriorityQueue<DataPack>& commProcPrio
         while (status != std::future_status::ready) {
             // std::cout << "指令正在执行..." << std::endl;
             std::string statusM = "2";// 用于存储状态信息的字符串
-            std::string statusMsg = "{cmdNum:" + cmdNum + "," + "uid:" + uid + "," + "action:" + action + "," + "timeStamp:" + timeStamp +  "," + "message:" + statusM + "}";
+            std::string statusMsg = "cmdNum:" + cmdNum + "," + "timestamp:" + getCurrentDateTime() +  "," + "code:" + statusM + "," + "message:" + message;
             std::cout << statusMsg << std::endl;
             std::cout << statusMsg << std::endl;
             // DataPack Ies = Pack_send(statusMsg);//指令执行情况的包Ies
@@ -784,12 +785,12 @@ int order(int argc, char** argv, ThreadSafePriorityQueue<DataPack>& commProcPrio
         if (executionResult) {
             // std::cout << "函数执行成功！" << std::endl;
             std::string statusM = "1";// 用于存储状态信息的字符串
-            std::string statusMsg = "{cmdNum:" + cmdNum + "," + "uid:" + uid + "," + "action:" + action + "," + "timeStamp:" + timeStamp +  "," + "message:" + statusM + "}";
+            std::string statusMsg = "cmdNum:" + cmdNum + "," + "timestamp:" + getCurrentDateTime() +  "," + "code:" + statusM + "," + "message:" + message;
             std::cout << statusMsg << std::endl;
         } else {
             // std::cout << "函数执行失败或超时！" << std::endl;
             std::string statusM = "0";// 用于存储状态信息的字符串
-            std::string statusMsg = "{cmdNum:" + cmdNum + "," + "uid:" + uid + "," + "action:" + action + "," + "timeStamp:" + timeStamp +  "," + "message:" + statusM + "}";
+            std::string statusMsg = "cmdNum:" + cmdNum + "," + "timestamp:" + getCurrentDateTime() +  "," + "code:" + statusM + "," + "message:" + message;
             std::cout << statusMsg << std::endl;
         }
         DataPack *dp;
@@ -821,7 +822,7 @@ int order(int argc, char** argv, ThreadSafePriorityQueue<DataPack>& commProcPrio
         while (status != std::future_status::ready) {
             // std::cout << "指令正在执行..." << std::endl;
             std::string statusM = "2";// 用于存储状态信息的字符串
-            std::string statusMsg = "{cmdNum:" + cmdNum + "," + "uid:" + uid + "," + "action:" + action + "," + "timeStamp:" + timeStamp +  "," + "message:" + statusM + "}";
+            std::string statusMsg = "cmdNum:" + cmdNum + "," + "timestamp:" + getCurrentDateTime() +  "," + "code:" + statusM + "," + "message:" + message;
             std::cout << statusMsg << std::endl;
             // DataPack Ies = Pack_send(statusMsg);//指令执行情况的包Ies
             // subDataToCommProcQueue.push(Ies);
@@ -840,12 +841,12 @@ int order(int argc, char** argv, ThreadSafePriorityQueue<DataPack>& commProcPrio
         if (executionResult) {
             // std::cout << "函数执行成功！" << std::endl;
             std::string statusM = "1";// 用于存储状态信息的字符串
-            std::string statusMsg = "{cmdNum:" + cmdNum + "," + "uid:" + uid + "," + "action:" + action + "," + "timeStamp:" + timeStamp +  "," + "message:" + statusM + "}";
+            std::string statusMsg = "cmdNum:" + cmdNum + "," + "timestamp:" + getCurrentDateTime() +  "," + "code:" + statusM + "," + "message:" + message;
             std::cout << statusMsg << std::endl;
         } else {
             // std::cout << "函数执行失败或超时！" << std::endl;
             std::string statusM = "0";// 用于存储状态信息的字符串
-            std::string statusMsg = "{cmdNum:" + cmdNum + "," + "uid:" + uid + "," + "action:" + action + "," + "timeStamp:" + timeStamp +  "," + "message:" + statusM + "}";
+            std::string statusMsg = "cmdNum:" + cmdNum + "," + "timestamp:" + getCurrentDateTime() +  "," + "code:" + statusM + "," + "message:" + message;
             std::cout << statusMsg << std::endl;
         }
         DataPack *dp;
@@ -876,7 +877,7 @@ int order(int argc, char** argv, ThreadSafePriorityQueue<DataPack>& commProcPrio
         while (status != std::future_status::ready) {
             // std::cout << "指令正在执行..." << std::endl;
             std::string statusM = "2";// 用于存储状态信息的字符串
-            std::string statusMsg = "{cmdNum:" + cmdNum + "," + "uid:" + uid + "," + "action:" + action + "," + "timeStamp:" + timeStamp +  "," + "message:" + statusM + "}";
+            std::string statusMsg = "cmdNum:" + cmdNum + "," + "timestamp:" + getCurrentDateTime() +  "," + "code:" + statusM + "," + "message:" + message;
             std::cout << statusMsg << std::endl;
             // DataPack Ies = Pack_send(statusMsg);//指令执行情况的包Ies
             // subDataToCommProcQueue.push(Ies);
@@ -895,12 +896,12 @@ int order(int argc, char** argv, ThreadSafePriorityQueue<DataPack>& commProcPrio
         if (executionResult) {
             // std::cout << "函数执行成功！" << std::endl;
             std::string statusM = "1";// 用于存储状态信息的字符串
-            std::string statusMsg = "{cmdNum:" + cmdNum + "," + "uid:" + uid + "," + "action:" + action + "," + "timeStamp:" + timeStamp +  "," + "message:" + statusM + "}";
+            std::string statusMsg = "cmdNum:" + cmdNum + "," + "timestamp:" + getCurrentDateTime() +  "," + "code:" + statusM + "," + "message:" + message;
             std::cout << statusMsg << std::endl;
         } else {
             // std::cout << "函数执行失败或超时！" << std::endl;
             std::string statusM = "0";// 用于存储状态信息的字符串
-            std::string statusMsg = "{cmdNum:" + cmdNum + "," + "uid:" + uid + "," + "action:" + action + "," + "timeStamp:" + timeStamp +  "," + "message:" + statusM + "}";
+            std::string statusMsg = "cmdNum:" + cmdNum + "," + "timestamp:" + getCurrentDateTime() +  "," + "code:" + statusM + "," + "message:" + message;
             std::cout << statusMsg << std::endl;
         }
         DataPack *dp;
@@ -917,7 +918,7 @@ int order(int argc, char** argv, ThreadSafePriorityQueue<DataPack>& commProcPrio
         ErrorCode::ErrorCodeType result = flightSample->setGoHomeAltitude(params["height"]);
         if (result == 0) {
           std::string statusM = "1";// 用于存储状态信息的字符串
-          std::string statusMsg = "{cmdNum:" + cmdNum + "," + "uid:" + uid + "," + "action:" + action + "," + "timeStamp:" + timeStamp +  "," + "message:" + statusM + "}";
+          std::string statusMsg = "cmdNum:" + cmdNum + "," + "timestamp:" + getCurrentDateTime() +  "," + "code:" + statusM + "," + "message:" + message;
           DataPack *dp;
           dp = new DataPack();
           dp->setPackType(1);
@@ -926,7 +927,7 @@ int order(int argc, char** argv, ThreadSafePriorityQueue<DataPack>& commProcPrio
           subDataToCommProcQueue.push(*dp);
         } else {
           std::string statusM = "0";// 用于存储状态信息的字符串
-          std::string statusMsg = "{cmdNum:" + cmdNum + "," + "uid:" + uid + "," + "action:" + action + "," + "timeStamp:" + timeStamp +  "," + "message:" + statusM + "}";
+          std::string statusMsg = "cmdNum:" + cmdNum + "," + "timestamp:" + timeStamp +  "," + "code:" + statusM + "," + "message:" + message;
           DataPack *dp;
           dp = new DataPack();
           dp->setPackType(1);
