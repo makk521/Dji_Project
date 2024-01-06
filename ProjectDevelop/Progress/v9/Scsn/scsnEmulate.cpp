@@ -23,6 +23,7 @@
 #include <algorithm>
 #include <curl/curl.h>
 #include "Mobility.hpp"
+#include "post.hpp"
 
 using json = nlohmann::json;
 using namespace std;
@@ -32,59 +33,40 @@ const int RECEIVEFROMCPORT = 5002; // 对c++的开放端口
 const int uavPackType[] = {0, 1, 2}; //无人机返回数据包的type
 // const string CALLBACKURL = "http://192.168.10.83:8005/foo/";  // 前端回调函数地址
 const string CALLBACKURL = "http://192.168.20.122:8080/ucs/uav/commandCallback";
-
+const std::string REDISIP = "172.21.2.1";
+const int REDISPORT = 6379;
+const std::string REDISPASSWORD = "Ustc1958@2023";
 
 ThreadSafeQueue<DataPack> mobilityQueue; // 存放来自右侧的移动性管理模块数据
 ThreadSafeQueue<DataPack> uavSubQueue; // 存放来自无人机的返回数据
 
-// Callback function to handle server response
-size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* output) {
-    size_t total_size = size * nmemb;
-    output->append((char*)contents, total_size);
-    return total_size;
+void RedisInit(std::string IP, int PORT, std::string PASSWORD){
+    /**
+    * @brief Redis初始化，若无则无法在线程中直接插入成功
+    * @param Redis的IP、端口与密码
+    * @return None
+    */
+    RedisConnect::Setup(IP, PORT, PASSWORD);
+    shared_ptr<RedisConnect> redis = RedisConnect::Instance();
+    redis->select(11);
 }
+void subinfo2Redis(std::string IP, int PORT, std::string PASSWORD, std::string PostData) {
+    /**
+    * @brief 将postData传入数据库，地址为ma_testUAVIP:
+    * @param PostData发送数据
+    * @return None
+    */
+    static int UAVIP = 001;
+    int DATA = 1;
+    RedisConnect::Setup(IP, PORT, PASSWORD);
+    shared_ptr<RedisConnect> redis = RedisConnect::Instance();
+    redis->select(11);
 
-// Function to make a POST request
-bool performPostRequest(const std::string& url, const std::string& postData, std::string& response) {
-    // Initialize libcurl
-    if (curl_global_init(CURL_GLOBAL_DEFAULT) != CURLE_OK) {
-        std::cerr << "Failed to initialize libcurl." << std::endl;
-        return false;
-    }
-
-    // Create a CURL object
-    CURL* curl = curl_easy_init();
-    if (curl) {
-        // Set request URL
-        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-
-        // Set POST data
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData.c_str());
-
-        // Set write callback function to handle server response
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
-
-        // Perform the request
-        CURLcode res = curl_easy_perform(curl);
-        if (res != CURLE_OK) {
-            std::cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << std::endl;
-            curl_easy_cleanup(curl);
-            curl_global_cleanup();
-            return false;
-        }
-
-        // Cleanup CURL object
-        curl_easy_cleanup(curl);
-    } else {
-        std::cerr << "Failed to initialize libcurl." << std::endl;
-        curl_global_cleanup();
-        return false;
-    }
-
-    // Cleanup libcurl
-    curl_global_cleanup();
-    return true;
+    // 在这里执行你的任务
+    redis->set("ma_test:" + to_string(UAVIP) + "$", PostData);
+    UAVIP++;
+    DATA++;
+    cout << "插入成功一次" << endl;
 }
 
 void postData(int clientSocket, sockaddr_in serverAddr){
@@ -319,6 +301,7 @@ void receiveCData(int HOST, ThreadSafeQueue<DataPack>& mobilityQueue, ThreadSafe
         else if(receivedPack.getPackType() == 1){
             std::string response;
             std::string postData = receivedPack.payload;
+            // "cmdNum:003,timestamp:1704446816276,code:2,message:b"
             if (performPostRequest(CALLBACKURL, postData, response)) {
                 std::cout << "回调函数传输成功，返回为: " << response << std::endl;
             }else{
@@ -366,6 +349,7 @@ void listenUavDataQueue(ThreadSafeQueue<DataPack>& uavSubQueue){
         if (!uavSubQueue.empty()) {
             DataPack value = uavSubQueue.pop();
             std::cout << "取出无人机返回数据并释放" << value.payload << std::endl;
+            subinfo2Redis(REDISIP, REDISPORT, REDISPASSWORD, value.payload);
             free(value.payload); 
         }
     }
@@ -415,6 +399,9 @@ int main() {
     serverAddrReceiver.sin_port = htons(RECEIVEFROMPYTHONPORT); // 使用端口5001
     serverAddrReceiver.sin_addr.s_addr = INADDR_ANY; // 监听所有网卡上的连接
 
+    // std::string postData1 = R"({"TIME_NOW":{"formatted_time":"2024-01-06 04:32:31111","timestamp":1704515559767})";
+    // subinfo2Redis(REDISIP, REDISPORT, REDISPASSWORD, postData1);
+    RedisInit(REDISIP, REDISPORT, REDISPASSWORD);
     std::thread posterThread(postData, clientSocketPoster, serverAddrPoster);
     std::thread receiverPythonThread(receiveData, serverSocketReceiver, serverAddrReceiver, std::ref(sharedCommandQueue));
     std::thread consumerThread(consumerFun, std::ref(sharedCommandQueue), uavSocketPoster, uavAddrPoster);

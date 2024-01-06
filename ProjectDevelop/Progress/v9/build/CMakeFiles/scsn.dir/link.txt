@@ -1,1 +1,0 @@
-/usr/bin/c++    -std=c++11 -pthread -g -O0   CMakeFiles/scsn.dir/Scsn/scsnEmulate.cpp.o CMakeFiles/scsn.dir/Mobility/Mobility.cpp.o  -o bin/scsn -rdynamic -lcurl 

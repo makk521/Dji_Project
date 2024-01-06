@@ -9,11 +9,13 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/nlohmann
     ${CMAKE_CURRENT_SOURCE_DIR}/Redis
     ${CMAKE_CURRENT_SOURCE_DIR}/Scsn
+    ${CMAKE_CURRENT_SOURCE_DIR}/CurlCallback
 ) # 设置头文件的搜索路径
 
 file(GLOB_RECURSE SRC_FILES 
         ${CMAKE_CURRENT_SOURCE_DIR}/Scsn/*.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/Mobility/*.cpp)
+        ${CMAKE_CURRENT_SOURCE_DIR}/Mobility/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/CurlCallback/*.cpp)
 
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/build/bin) 
 

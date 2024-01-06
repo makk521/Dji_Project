@@ -92,7 +92,7 @@ string Read_UAVinfo_IP(int uavID){
 void Pack_mobility(string uav_info,DataPack *dp){
     int len=uav_info.length();
     dp->setPackType(9);//设置包类型
-    dp->setPackLength(224+(len+1)*8);//设置包长度，单位为bit
+    dp->setPackLength(len+1);//设置包长度，单位为bit
     //dp->setPackLength(len+1);//设置包长度，单位为byte
     //dp->payload = (char*)uav_info.c_str();
     dp->payload = new char[len+1];
