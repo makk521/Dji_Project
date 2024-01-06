@@ -1,3 +1,0 @@
-/home/dji/Desktop/ma/v9/CMakeFiles/edit_cache.dir
-/home/dji/Desktop/ma/v9/CMakeFiles/scsn.dir
-/home/dji/Desktop/ma/v9/CMakeFiles/rebuild_cache.dir
