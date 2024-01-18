@@ -4,20 +4,23 @@ import json
 
 dataSend = {
 
-    "uid": "2", #无人机序号
-    "action": "takeoff", #arm disarm takeoff land move gohome setGohomeHeight
-    "params": {"x":1, "y":1, "z":2, "yaw":1, "height":21}, #takeoff:x,y,z,yaw(float xyz轴位移，无人机机头朝向) setGohomeHeight:height    
-    "commandNum":"11", #唯一命令编号
-    "timeStamp": "46523164613" , #时间戳
-    "priority": '1', #1正常排队执行，2是插队优先执行（下一个执行），3是中断（停止当前指令立即执行）
 
-    # "code": 1,
-    # "data": {
-    #     "commandNum": "2",
-    #     "code": 10086,
-    #     "timestamp": 432123234566612
-    # },
-    # "message": "命令执行成功"
+    "lineFormat": 0,  
+    "leader": "1",  
+    "data": [
+        {
+            "uid": "1",
+            "action": "takeoff", 
+            "sParams": {"x":0, "y":0, "z":1.3}, 
+            "dParams": {"x": 3, "y": 3, "z": 3},
+            "commandNum": "cmdNum:003:move:1704444270941",
+            "timeStamp": "1704444270941s",
+            "priority": "1",
+        }
+    ]
+
+
+
 }
 
 if __name__ == "__main__":
