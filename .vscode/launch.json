@@ -8,8 +8,8 @@
       "args": [],
       "stopAtEntry": false,
       "externalConsole": true,
-      "cwd": "c:/Users/34511/Documents/GitHub/Dji_Project/ProjectDevelop/Progress/v9/Scsn",
-      "program": "c:/Users/34511/Documents/GitHub/Dji_Project/ProjectDevelop/Progress/v9/Scsn/build/Debug/outDebug",
+      "cwd": "c:/Users/34511/Documents/GitHub/Dji_Project/ProjectStudy/spdlogStudy/src",
+      "program": "c:/Users/34511/Documents/GitHub/Dji_Project/ProjectStudy/spdlogStudy/src/build/Debug/outDebug",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [

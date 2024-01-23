@@ -3,8 +3,6 @@ from typing import Optional
 import json
 
 dataSend = {
-
-
     "lineFormat": 0,  
     "leader": "1",  
     "data": [
