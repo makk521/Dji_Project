@@ -1,0 +1,11 @@
+uavBatteryCapacity: 5935mAh
+uavColor: red
+uavId: '1'
+uavIp: 192.168.10.83
+uavMac: 60:60:1f:cd:64:2d
+uavManufacturer: dji
+uavName: M300_1
+uavSize: 810*670*430mm
+uavTimestamp: 1706239906258
+uavType: MATRICE 300
+uavWingType: '2'

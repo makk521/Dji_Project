@@ -1,5 +1,4 @@
-#include "easylogging++.h"
-
+#include "func.hpp"
 INITIALIZE_EASYLOGGINGPP
 
 void initLogger(){
@@ -14,14 +13,20 @@ void initLogger(){
     el::Loggers::reconfigureLogger("myLogger", conf);
 }
 
+void mainLog(){
+    LOG(INFO) << "This is an info log in main";
+    LOG(DEBUG) << "This is a debug log in main";
+    LOG(WARNING) << "This is a warning log in main";
+    LOG(ERROR) << "This is an error log in main";
+    // LOG(FATAL) << "This is a fatal log in main";
+}
+
 int main() {
     
     initLogger();
-    LOG(INFO) << "This is an info log";
-    LOG(DEBUG) << "This is a debug log";
-    LOG(WARNING) << "This is a warning log";
-    LOG(ERROR) << "This is an error log";
-    LOG(FATAL) << "This is a fatal log";
+    funLog();
+    mainLog();
+    
 
     return 0;
 }

@@ -74,6 +74,12 @@ void Write_UAVinfo(int key_int, string value){
 	cout << "[Mobility]更新无人机信息：（" <<key << "," << value<< "）"<< endl;
     #endif
 }
+//向Redis写入数据
+void Write_UAVinfo_hash(UAV_mobility uav_info){
+	shared_ptr<RedisConnect> redis = ConnectToRedis(Redis_ID);
+	redis->hset(to_string(uav_info.cluster_id),to_string(uav_info.uav_id),uav_info.uav_ip);
+	cout<<"更新无人机信息：（"<<to_string(uav_info.cluster_id)<<","<<to_string(uav_info.uav_id)<< ","<<uav_info.uav_ip<<"）"<<endl;
+}
 //从Redis中读取数据
 string Read_UAVinfo(int uavID){
     string key = to_string(uavID);
@@ -89,7 +95,26 @@ string Read_UAVinfo_IP(int uavID){
     //cout << "[Mobility]ID为" << uavID <<"的无人机对应的IP地址为：" << ReadUavJson["uav_ip"] <<endl;
 	return ReadUavJson["uav_ip"];
 }
-
+string Read_UAVinfo_IP_hash(int clusterID, int uavID){
+    string key = to_string(clusterID);
+    string filed = to_string(uavID);
+    shared_ptr<RedisConnect> redis = ConnectToRedis(Redis_ID);
+	string jsonString=redis->hget(key,filed);
+    cout << "读取无人机信息：（" << key << "," << filed << ","<< jsonString<< "）"<<endl;
+    return jsonString;
+}
+vector<string> Read_UAVinfo_IP_hash_all(int clusterID){
+    string key = to_string(clusterID);
+    shared_ptr<RedisConnect> redis = ConnectToRedis(Redis_ID);
+    vector<string> uav_all = redis->hvals(key);
+    cout << "读取第" << clusterID << "簇所有无人机IP信息：" << endl;
+    
+	for(int i=0;i<uav_all.size();i++){
+		cout<<uav_all[i]<<endl;
+	}
+    
+    return uav_all;
+}
 /*--与信息模块交互--*/
 void Pack_mobility(string uav_info,DataPack *dp){
     int len=uav_info.length();
@@ -130,7 +155,11 @@ void IPupdate_SaveToRedis(DataPack uav_info){
     int uav_id = 1;
 	Write_UAVinfo(uav_id,str);
 }
-
+void IPupdate_SaveToRedis_hash(DataPack uav_info){
+    json uav_info_j = nlohmann::json::parse(uav_info.payload);
+    UAV_mobility uav_info_m = JsonToStruct(uav_info_j);
+	Write_UAVinfo_hash(uav_info_m);
+}
 
 /*--socket，测试用--*/
 DataPack socket_server_datapack(){

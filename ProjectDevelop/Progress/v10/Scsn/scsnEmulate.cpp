@@ -32,7 +32,6 @@ using namespace std;
 extern const int RECEIVEFROMPYTHONPORT;   // 对python的开放端口
 extern const int RECEIVEFROMCPORT; // 对c++的开放端口
 extern const int uavPackType[]; //无人机返回数据包的type
-// const string CALLBACKURL = "http://192.168.10.83:8005/foo/";  // 前端回调函数地址
 extern const string CALLBACKURL;
 extern const std::string REDISIP;
 extern const int REDISPORT;
@@ -43,6 +42,9 @@ ThreadSafeQueue<DataPack> uavSubQueue; // 存放来自无人机的返回数据
 extern ThreadSafeQueue<std::string> sharedCommandQueue; // fatsapi传过来的字符串指令(body)
 extern ThreadSafeQueue<std::string> sendDataQueue; // 无人机编队处理后的
 extern ThreadSafeQueue<DataPack> groupDirectiveExecutionQueue; // 编队指令执行情况
+
+const std::string UAVIP = "192.168.10.83"; // 无人机端的IP地址
+const int UAVPORT = 8001; // 无人机端开放的端口
 
 void multiProgress(ThreadSafeQueue<std::string>& sharedQueue, ThreadSafeQueue<std::string>& sendDataQueue){
     /**
@@ -72,7 +74,7 @@ int main() {
         return 1;
     }
 
-    // 设置服务器的 IP 地址和端口号 Poster
+    // 设置PYTHON的 IP 地址和端口号 Poster
     sockaddr_in serverAddrPoster;
     serverAddrPoster.sin_family = AF_INET;
     serverAddrPoster.sin_port = htons(5000); // 替换为服务器的端口号
@@ -86,8 +88,8 @@ int main() {
     // 设置无人机的 IP 地址和端口号 发送数据
     sockaddr_in uavAddrPoster;
     uavAddrPoster.sin_family = AF_INET;
-    uavAddrPoster.sin_port = htons(8001); // 替换为服务器的端口号
-    uavAddrPoster.sin_addr.s_addr = inet_addr("192.168.10.83"); // 替换为服务器的 IP 地址
+    uavAddrPoster.sin_port = htons(UAVPORT); // 替换为服务器的端口号
+    uavAddrPoster.sin_addr.s_addr = inet_addr(UAVIP.c_str()); // 替换为服务器的 IP 地址
 
     // 创建Socket
     int serverSocketReceiver = socket(AF_INET, SOCK_STREAM, 0);

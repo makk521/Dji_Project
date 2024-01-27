@@ -34,8 +34,11 @@ UAV_mobility get_UAV_info();
 /*--数据库操作部分--*/
 shared_ptr<RedisConnect> ConnectToRedis(int redis_id);
 void Write_UAVinfo(int key_int, string value);
+void Write_UAVinfo_hash(UAV_mobility uav_info);
 string Read_UAVinfo(int uavID);
 string Read_UAVinfo_IP(int uavID);
+string Read_UAVinfo_IP_hash(int clusterID, int uavID);
+vector<string> Read_UAVinfo_IP_hash_all(int clusterID);
 /*--与信息模块交互--*/
 DataPack Pack_mobility(string uav_info);
 /*--定时更新ip信息（无人机端）--*/
@@ -43,6 +46,7 @@ void IPupdate_SendToServer(ThreadSafeQueue<DataPack>& Queue);
 void IPupdate_Time(ThreadSafeQueue<DataPack>& Queue);
 /*--定时更新ip信息（服务器端）--*/
 void IPupdate_SaveToRedis(DataPack uav_info);
+void IPupdate_SaveToRedis_hash(DataPack uav_info);
 /*--socket，测试用--*/
 DataPack socket_server_datapack();
 void socket_client_datapack(const DataPack &p);

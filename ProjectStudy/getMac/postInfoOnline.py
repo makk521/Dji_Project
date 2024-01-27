@@ -9,22 +9,22 @@ import subprocess
 import yaml
 import json
 import requests
+import time
 
 URL = "http://192.168.10.230:8083/mock/701/ucs/uav/activate"
-URL = "http://192.168.20.122:8080/ucs/uav/activate" # 测试🔗
+URL = "http://192.168.20.122:8080/ucs/uav/activate"
 uav_data = {
-    "uavId": "1",
-    "uavMac": "",
-    "uavTimestamp": 0,
-    "uavName": "M300_1",
+    "uavId": "1", 
+    "uavMac": "",  # 待更新
+    "uavTimestamp": 0,  # 待更新
+    "uavName": "M300_1", 
     "uavType": "MATRICE 300",
-    "uavWingType": 1, # 机翼类型：1-固定翼，2-螺旋翼
     "uavManufacturer": "dji",
     "uavColor": "red",
-    "uavSize": "810*670*430mm",
+    "uavSize": "810*670*430mm", 
     "uavBatteryCapacity": "5935mAh",
-    "uavIp": "",
-    "uavPort": ""
+    "uavIp": "", # 待更新
+    "uavWingType":"2"
 }
 
 def get_mac_address(interface="eth0"):
@@ -53,9 +53,44 @@ def get_mac_address(interface="eth0"):
         print("执行ifconfig命令时出现错误。")
         return None
 
+def get_timestamp():
+    ##############################
+    # @description 获取无人机13位时间戳
+    # @param Nome
+    # @return timestamp_milliseconds(int)
+    ##############################n
+    timestamp_seconds = time.time()
+    # 将时间戳转换为毫秒级别的13位时间戳
+    timestamp_milliseconds = int(timestamp_seconds * 1000)
+    return timestamp_milliseconds
+
+def get_first_ip():
+    ##############################
+    # @description 获取无人机ip  hostname -I
+    # @param Nome
+    # @return ip_addresses[0] 
+    ##############################n
+    try:
+        # 执行命令并捕获输出
+        result = subprocess.run(['hostname', '-I'], capture_output=True, text=True, check=True)
+        
+        # 获取命令输出并以空格为分隔符拆分IP地址
+        ip_addresses = result.stdout.strip().split()
+
+        # 返回第一个IP地址
+        if ip_addresses:
+            return ip_addresses[0]
+        else:
+            return None
+    except subprocess.CalledProcessError as e:
+        print("Error: %s" %e)
+        return None
 
 if __name__ == "__main__":
     uav_data["uavMac"] = get_mac_address()
+    uav_data["uavTimestamp"] = get_timestamp()
+    uav_data["uavIp"] = get_first_ip()
+
     uav_json = json.dumps(uav_data)
 
     print(uav_json)

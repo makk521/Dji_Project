@@ -713,6 +713,26 @@ public:
 
 		return code;
 	}
+	int hgetall(const string& key, vector<string>& val)
+	{
+		vector<string> vec;
+
+		if (execute(vec, "hgetall", key) <= 0) return code;
+
+		val = vec;
+
+		return code;
+	}
+	int hvals(const string& key, vector<string>& val)
+	{
+		vector<string> vec;
+
+		if (execute(vec, "hvals", key) <= 0) return code;
+
+		val = vec;
+
+		return code;
+	}
 	int set(const string& key, const string& val, int timeout = 0)
 	{
 		return timeout > 0 ? execute("setex", key, timeout, val) : execute("set", key, val);
@@ -846,7 +866,22 @@ public:
 
 		return res;
 	}
+	vector<string> hgetall(const string& key)
+	{
+		vector<string> res;
 
+		hgetall(key, res);
+
+		return res;
+	}
+	vector<string> hvals(const string& key)
+	{
+		vector<string> res;
+
+		hvals(key, res);
+
+		return res;
+	}
 	const char* getLockId()
 	{
 		thread_local char id[0xFF] = {0};

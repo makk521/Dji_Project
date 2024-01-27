@@ -227,4 +227,6 @@ void consumerFun(ThreadSafeQueue<std::string>& sendDataQueue, int uavSocket, soc
 void receiveCData(int HOST, ThreadSafeQueue<DataPack>& mobilityQueue, ThreadSafeQueue<DataPack>& uavSubQueue, ThreadSafeQueue<DataPack>& groupDirectiveExecutionQueue);
 void listenMobilityQueue(ThreadSafeQueue<DataPack>& mobilityQueue); // 监听移动性管理模块数据
 void listenUavDataQueue(ThreadSafeQueue<DataPack>& uavSubQueue); // 监听无人机订阅返回数据
+void connectWithRetry(int clientSocket, sockaddr_in serverAddr, int maxRetries, int retryDelaySeconds); // 超时重连服务端
+void printMessage(const std::string& message); // 线程安全的打印
 #endif

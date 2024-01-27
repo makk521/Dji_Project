@@ -12,9 +12,10 @@ class Commander {
 public:
     Commander(){}
     bool isCommandProcessed = true;
+    bool waitingResponse = false;
     //void process();
     
-    int vehicle_num;
+    // int n_uavs;
     struct UAV {
         int id;
         std::array<double, 3> position; //原始位置
@@ -35,7 +36,7 @@ public:
     std::mutex mtx; // 
 
     std::vector<UAV> uavs;
-      std::vector<UAV> uavs_fp;//cun qi存切换的东西
+    //   std::vector<UAV> uavs_fp;//cun qi存切换的东西
     std::vector<std::array<double, 3>> targets;  // 目标点位置集合
     int cmd;  // 命令
     // std::mutex mtx;
@@ -51,7 +52,7 @@ public:
     double distance_uav(const std::array<double, 3>& a, const std::array<double, 3>& b);
     std::vector<std::array<double, 3>> calculate_formation(std::array<double, 3> center, double angle, int n_uavs, double distance, int cmd);
     void addToQueue(const std::vector<UAV>& uavs, ThreadSafeQueue<DataPack>& queue);
-    double calculateAngle(const nlohmann::json& sParams, const nlohmann::json& dParams);
+    double calculateAngle(const nlohmann::json& sparams, const nlohmann::json& dparams);
     void processJsonData(Commander& commander, std::string& jsonData, ThreadSafeQueue<std::string>& sendDataQueue,ThreadSafeQueue<std::string>&  queueTemp);
     void processQueue(ThreadSafeQueue<DataPack>& queue, int& key);
     

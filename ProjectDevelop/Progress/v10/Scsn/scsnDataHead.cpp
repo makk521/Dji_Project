@@ -24,11 +24,13 @@ using json = nlohmann::json;
 extern const int RECEIVEFROMPYTHONPORT = 5001;   // 对python的开放端口
 extern const int RECEIVEFROMCPORT = 5002; // 对c++的开放端口
 int uavPackType[] = {0, 1, 2, 3}; //无人机返回数据包的type
-// const string CALLBACKURL = "http://192.168.10.83:8005/foo/";  // 前端回调函数地址
 extern const string CALLBACKURL = "http://192.168.20.122:8080/ucs/uav/commandCallback";
 extern const std::string REDISIP = "172.21.2.1";
 extern const int REDISPORT = 6379;
 extern const std::string REDISPASSWORD = "Ustc1958@2023";
+extern const int MAXRETRIES = 10; // 最大重连次数
+extern const int RETRYDELAYSECONDS = 5;// 每次重连间隔时间(秒)
+std::mutex COUTMUTEX; // 打印锁
 
 // 收到来自fastapi传来的字符串
 ThreadSafeQueue<std::string> sharedCommandQueue;
@@ -41,8 +43,8 @@ ThreadSafeQueue<std::string> sharedCommandQueue;
 //             "timeStamp": "1704444270941s",
 //             "priority": "1",
 //         }
-ThreadSafeQueue<std::string> sendDataQueue;
-ThreadSafeQueue<DataPack> groupDirectiveExecutionQueue;
+ThreadSafeQueue<std::string> sendDataQueue; // 执行情况向无人机端发送数据
+ThreadSafeQueue<DataPack> groupDirectiveExecutionQueue; // 编队执行情况返回
 
 void RedisInit(std::string IP, int PORT, std::string PASSWORD){
     /**
@@ -67,9 +69,9 @@ void subinfo2Redis(std::string IP, int PORT, std::string PASSWORD, std::string P
     redis->select(11);
 
     // 在这里执行你的任务
-    redis->set("uav:" + to_string(UAVIP) +":realtime" + "$", PostData);
+    redis->set("uav:" + to_string(UAVIP) +":realtime", PostData);
     // UAVIP++;
-    cout << "插入成功一次" << endl;
+    // cout << "插入成功一次" << endl;
 }
 
 void postToPythonData(int clientSocket, sockaddr_in serverAddr){
@@ -102,6 +104,14 @@ void postToPythonData(int clientSocket, sockaddr_in serverAddr){
     }
 }
 
+void printMessage(const std::string& message) {
+    // 使用互斥锁保护 std::cout
+    std::lock_guard<std::mutex> lock(COUTMUTEX);
+    
+    // 打印信息
+    std::cout << message << std::endl;
+}
+
 void receivePythonData(int serverSocket, sockaddr_in serverAddr, ThreadSafeQueue<std::string>& sharedCommandQueue) {
     /**
     * @brief socket服务端,被连接后若接收到发送来的数据,将其push进shareQueue中
@@ -120,8 +130,12 @@ void receivePythonData(int serverSocket, sockaddr_in serverAddr, ThreadSafeQueue
         perror("Error listening");
         return ;
     }
-    // 接受连接
-    cout << "Server listening on port 5000..." << endl;
+    // 等待连接
+    std::string message = "开放端口";
+    message +=  std::to_string(RECEIVEFROMPYTHONPORT);
+    message += "等待客户端(fastapi)连接...";
+    printMessage(message);
+
     sockaddr_in clientAddr;
     socklen_t clientAddrLen = sizeof(clientAddr);
     int clientSocket = accept(serverSocket, (struct sockaddr*)&clientAddr, &clientAddrLen);
@@ -130,7 +144,7 @@ void receivePythonData(int serverSocket, sockaddr_in serverAddr, ThreadSafeQueue
         return;
     }
     
-    cout << "Client connected" << endl;
+    printMessage("fastapi连接成功");
 
     char buffer[1024];
     while (true) {
@@ -153,6 +167,30 @@ void receivePythonData(int serverSocket, sockaddr_in serverAddr, ThreadSafeQueue
     }
 
     close(clientSocket);
+}
+
+void connectWithRetry(int clientSocket, sockaddr_in serverAddr, int maxRetries, int retryDelaySeconds) {
+    /**
+    * @brief 尝试多次连接服务端   
+    * @param maxRetries 最大尝试次数
+    * @param retryDelaySeconds  每次尝试间隔
+    * @return None
+    */
+    for (int attempt = 1; attempt <= maxRetries; ++attempt) {
+        std::string message = "Attempting to connect Server (Attempt ";
+        message += std::to_string(attempt);
+        printMessage(message);
+
+        if (connect(clientSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) == 0) {
+            std::cout << "Connected to server" << std::endl;
+            return;
+        }
+
+        // 连接失败，等待一段时间再次尝试
+        std::this_thread::sleep_for(std::chrono::seconds(retryDelaySeconds));
+    }
+
+    std::cout << "Failed to connect after multiple attempts" << std::endl;
 }
 
 void consumerFun(ThreadSafeQueue<std::string>& sendDataQueue, int uavSocket, sockaddr_in uavAddr) {
@@ -185,25 +223,27 @@ void consumerFun(ThreadSafeQueue<std::string>& sendDataQueue, int uavSocket, soc
     dataToSendPacK.setClusterId(0b1);
 
     char *dataToSend = static_cast<char*>(malloc(2000));
-    // dataToSendPacK.payload = static_cast<char*>(malloc(200)); 
+ 
+    // if (connect(uavSocket, (struct sockaddr*)&uavAddr, sizeof(uavAddr)) == -1) {
+    //     perror("Error connecting to server");
+    //     close(uavSocket);
+    //     return ;
+    // }
+    // 连接无人机端(服务端)
+    int maxConnectionRetries = 5, retryDelaySeconds = 5;
+    connectWithRetry(uavSocket, uavAddr, MAXRETRIES, RETRYDELAYSECONDS);
 
-    if (connect(uavSocket, (struct sockaddr*)&uavAddr, sizeof(uavAddr)) == -1) {
-        perror("Error connecting to server");
-        close(uavSocket);
-        return ;
-    }
     while (true) {
         std::string value = sendDataQueue.pop(); // 取出未处理的字符串{'uid': '2', 'uavType': '', 'action': 'takeoff', 'params': [], 'commandNum': ''}
-        #ifdef DEBUG
-            std::cout << "从sendDataQueue取出" << value << std::endl;
-        #endif
+        std::cout << "从sendDataQueue取出" << value << std::endl;
+        
         std::replace(value.begin(), value.end(), '\'', '\"'); // 将'转"使得可以转为json格式
         json valueJson = json::parse(value);
         json payloadJson; // 将value中有用的数据存到string中
         payloadJson["uid"] = valueJson["uid"];
         payloadJson["action"] = valueJson["action"];
-        payloadJson["sParams"] = valueJson["sParams"];
-        payloadJson["dParams"] = valueJson["dParams"];
+        payloadJson["sParams"] = valueJson["sparams"];
+        payloadJson["dParams"] = valueJson["dparams"];
         payloadJson["commandNum"] = valueJson["commandNum"];
         payloadJson["priority"] = valueJson["priority"];
         payloadJson["timeStamp"] = valueJson["timeStamp"];
@@ -225,12 +265,10 @@ void consumerFun(ThreadSafeQueue<std::string>& sendDataQueue, int uavSocket, soc
             perror("Error sending data");
             break;
         }
-        #ifdef DEBUG
-            // temp.coutDataPackHeader();
-            std::cout << "发送数据Id" << temp.getDataSheetIdentificationNum() << std::endl;
-            // std::cout << "发送数据: " << dataToSendPacK.getPackType() << " Id  : " << dataToSendPacK.getDataSheetIdentificationNum() << std::endl;
-            std::cout << "发送给无人机的数据: " << value << std::endl;
-        #endif
+        // temp.coutDataPackHeader();
+        std::cout << "发送数据Id" << temp.getDataSheetIdentificationNum() << std::endl;
+        // std::cout << "发送数据: " << dataToSendPacK.getPackType() << " Id  : " << dataToSendPacK.getDataSheetIdentificationNum() << std::endl;
+        std::cout << "发送给无人机的数据: " << payloadJson << std::endl;
     }
 }
 
@@ -266,7 +304,7 @@ void receiveCData(int HOST, ThreadSafeQueue<DataPack>& mobilityQueue, ThreadSafe
         return;
     }
 
-    std::cout << "等待客户端连接..." << std::endl;
+    std::cout << "等待客户端(无人机)连接..." << std::endl;
 
     // 接受连接
     sockaddr_in clientAddr;
@@ -300,11 +338,11 @@ void receiveCData(int HOST, ThreadSafeQueue<DataPack>& mobilityQueue, ThreadSafe
             std::cout << "客户端断开连接" << std::endl;
             break;
         }
-        #ifdef DEBUG
-            // receivedPack.coutDataPackHeader();
-            std::cout << "接收到的数据:receivedPack.payload: " << receivedPack.payload <<  std::endl;
-            std::cout << "接收到的数据:receivedPack.getPackType(): " << receivedPack.getPackType() <<  std::endl;
-        #endif
+        
+        // receivedPack.coutDataPackHeader();
+        std::cout << "接收到来自无人机的数据:receivedPack.payload: " << receivedPack.payload <<  std::endl;
+        std::cout << "接收到来自无人机的数据:receivedPack.getPackType(): " << receivedPack.getPackType() <<  std::endl;
+        
         if(receivedPack.getPackType() == 9){
             mobilityQueue.push(receivedPack);  // 存进移动管理队列
         }
@@ -317,12 +355,12 @@ void receiveCData(int HOST, ThreadSafeQueue<DataPack>& mobilityQueue, ThreadSafe
             std::string response;
             std::string postData = receivedPack.payload;
             // "cmdNum:003,timestamp:1704446816276,code:2,message:b"
-            std::cout << "给金文林：" << postData << std::endl;
-            // if (performPostRequest(CALLBACKURL, postData, response)) {
-            //     std::cout << "回调函数传输成功，返回为: " << response << std::endl;
-            // }else{
-            //     std::cout << "回调函数传输错误." << std::endl;
-            // }
+            // std::cout << "给金文林：" << postData << std::endl;
+            if (performPostRequest(CALLBACKURL, postData, response)) {
+                std::cout << "回调函数传输成功，返回为: " << response << std::endl;
+            }else{
+                std::cout << "回调函数传输错误." << std::endl;
+            }
 
         }
         
@@ -332,7 +370,7 @@ void receiveCData(int HOST, ThreadSafeQueue<DataPack>& mobilityQueue, ThreadSafe
         else{
             std::cout << "接收到的数据类型错误" << std::endl;
         }
-        std::cout << "执行完了" << std::endl;
+        // std::cout << "执行完了" << std::endl;
         free(receivedData);
     }
 
@@ -352,12 +390,13 @@ void listenMobilityQueue(ThreadSafeQueue<DataPack>& mobilityQueue){
             DataPack value = mobilityQueue.pop();
             #ifdef MOBILITY_COUT
                 std::cout << "取出移动性管理模块数据并释放" << value.payload << std::endl;
-                IPupdate_SaveToRedis(value);
+                IPupdate_SaveToRedis_hash(value);
                 free(value.payload); 
             #endif
             
             #ifdef MOBILITY_COUT
-                std::cout << "[Mobility]ID为1的无人机IP地址："  << Read_UAVinfo_IP(1) <<std::endl;
+                //std::cout << "[Mobility]ID为1的无人机IP地址："  << Read_UAVinfo_IP(1) <<std::endl;
+                Read_UAVinfo_IP_hash_all(2);
             #endif
         }
     }
@@ -372,7 +411,7 @@ void listenUavDataQueue(ThreadSafeQueue<DataPack>& uavSubQueue){
     while (true) {
         if (!uavSubQueue.empty()) {
             DataPack value = uavSubQueue.pop();
-            std::cout << "取出无人机返回数据并释放" << value.payload << std::endl;
+            // std::cout << "取出无人机返回数据并释放" << value.payload << std::endl;
             subinfo2Redis(REDISIP, REDISPORT, REDISPASSWORD, value.payload);
             free(value.payload); 
         }

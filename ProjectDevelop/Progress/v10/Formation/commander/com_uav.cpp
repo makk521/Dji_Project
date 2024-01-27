@@ -58,6 +58,17 @@ void Commander::xiongAlgorithm() {
     auto costMatrix = calculateCostMatrix();
     Hungarian hungarian;
     vector<double> assignment;
+    std::cout << "costMatrix : " << std::endl;
+    for (size_t i = 0; i < costMatrix.size(); ++i) {
+        for (size_t j = 0; j < costMatrix[i].size(); ++j) {
+            std::cout << "UAV " << i << " to Target " << j << ": " << costMatrix[i][j] << " ";
+        }
+        std::cout << std::endl;
+    }
+    std::cout << "assignment : " << std::endl;
+    for (const double& value : assignment) {
+        std::cout << value << " ";
+    }
     hungarian.solve(costMatrix, assignment);
     for (size_t i = 0; i < uavs.size(); ++i) {
         size_t targetIndex = static_cast<size_t>(assignment[i]);
@@ -135,26 +146,26 @@ void Commander::xiongAlgorithm() {
                 // }
                 //
                 //按照addToQueue函数写的打印函数
-                for (const auto& uav : uavs) {
-                    //序列化数据，与addToQueue中相同
-                    size_t bufferSize = sizeof(uav.id) + 2 * sizeof(std::array<double, 3>);
-                    char* uavData = new char[bufferSize];
-                    size_t offset = 0;
-                    std::memcpy(uavData + offset, &uav.id, sizeof(uav.id));
-                    offset += sizeof(uav.id);
-                    std::memcpy(uavData + offset, &uav.position, sizeof(uav.position));
-                    offset += sizeof(uav.position);
-                    std::memcpy(uavData + offset, &uav.target, sizeof(uav.target));
-                    double pos[3], target[3];
-                    std::memcpy(pos, uavData + sizeof(uav.id), sizeof(pos));
-                    std::memcpy(target, uavData + sizeof(uav.id) + sizeof(pos), sizeof(target));
+                // for (const auto& uav : uavs) {
+                //     //序列化数据，与addToQueue中相同
+                //     size_t bufferSize = sizeof(uav.id) + 2 * sizeof(std::array<double, 3>);
+                //     char* uavData = new char[bufferSize];
+                //     size_t offset = 0;
+                //     std::memcpy(uavData + offset, &uav.id, sizeof(uav.id));
+                //     offset += sizeof(uav.id);
+                //     std::memcpy(uavData + offset, &uav.position, sizeof(uav.position));
+                //     offset += sizeof(uav.position);
+                //     std::memcpy(uavData + offset, &uav.target, sizeof(uav.target));
+                //     double pos[3], target[3];
+                //     std::memcpy(pos, uavData + sizeof(uav.id), sizeof(pos));
+                //     std::memcpy(target, uavData + sizeof(uav.id) + sizeof(pos), sizeof(target));
 
-                    //打印解析后的数据
-                    // std::cout << "ID: " << uav.id<< std::endl;
-                    // std::cout << "Position: " << pos[0] << ", " << pos[1] << ", " << pos[2] << std::endl;
-                    // std::cout << "Target: " << target[0] << ", " << target[1] << ", " << target[2] << std::endl;
-                    delete[] uavData; //释放内存
-                }
+                //     //打印解析后的数据
+                //     // std::cout << "ID: " << uav.id<< std::endl;
+                //     // std::cout << "Position: " << pos[0] << ", " << pos[1] << ", " << pos[2] << std::endl;
+                //     // std::cout << "Target: " << target[0] << ", " << target[1] << ", " << target[2] << std::endl;
+                //     delete[] uavData; //释放内存
+                // }
                 
                 //broadcastUAVData();       //广播无人机数据
             }
@@ -195,89 +206,60 @@ void Commander::xiongAlgorithm() {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));  // 休眠
     }
 
-// //封包，现在没什么用
-// void Commander::addToQueue(const std::vector<Commander::UAV>& uavs, ThreadSafeQueue<DataPack>& queue) {
-//     for (const auto& uav : uavs) {
-//         size_t bufferSize = sizeof(uav.id) + 2 * sizeof(std::array<double, 3>);
-        
-//         char* uavData = new char[bufferSize]; 
 
-//         size_t offset = 0;
-//         //复制UAV数据
-//         std::memcpy(uavData + offset, &uav.id, sizeof(uav.id));
-//         offset += sizeof(uav.id);
-//         std::memcpy(uavData + offset, &uav.position, sizeof(uav.position));
-//         offset += sizeof(uav.position);
-//         std::memcpy(uavData + offset, &uav.target, sizeof(uav.target));
 
-//         DataPack pack;
-//         pack.setPackType(16); //包类型为16
-//         pack.payload = uavData;
-//         pack.payloadSize = bufferSize;
+// //测试匈牙利算法给定输入输出，输出各无人机位置
+// void Commander::testAlgorithm() {
+//     std::array<double, 3> center = {0.0, 0.0, 0.0};
+//     double angle= 45;
+//     int n_uavs= 6;
+//     double distance= 1.0;
+//     std::cout<< "1  2D line  2  2D arrow  3  3D slash" << std::endl;
+//     std::cin >> cmd;
+//     std::vector<std::array<double, 3>> testTargets = calculate_formation(center, angle, n_uavs, distance, cmd);
 
-//         queue.push(pack); //将DataPack加到队列中
+//      //测试
+//      //打印目标点集合
+//     std::cout << "........................." << std::endl;
+//     std::cout << "Target Points:" << std::endl;
+    
+//     for (const auto& target : testTargets) {
+//         std::cout << "(" << target[0] << ", " << target[1] << ", " << target[2] << ")" << std::endl;
+//     }
+//     std::cout << "........................." << std::endl;
+//     std::cout << "switching process:" << std::endl;
+//     std::vector<Commander::UAV> testUavs= {
+//         {1, {1.8, 2.8, 3.8}, {0, 0, 0}},
+//         {2, {1.0, 2, 2}, {0, 0, 0}},
+//         {3, {2, 2, 2}, {0, 0, 0}},
+//         {4, {2, 2, 2}, {0, 0, 0}},
+//         {5, {2, 2, 2}, {0, 0, 0}},
+//         {6, {2, 2, 2}, {0, 0, 0}}
+//     };
+//     // std::vector<std::array<double, 3>> testTargets = {
+//     //     {3.5, 4.6, 3.2},
+//     //     {4.1, 4.7, 6.5},
+//     //     {5.5, 2.4, 8.3},
+//     //     {3, 2.4, 8.3},
+//     //     {4, 2.4, 8.3},
+//     //     {5.5, 5, 2},
+//     // };
+//     setTestData(testUavs, testTargets);
+//     // xyl算法
+//     xiongAlgorithm();
+//     for (const auto& uav : uavs) { 
+//        std::cout << "UAV " << uav.id << " (" 
+//               << uav.position[0] << ", " << uav.position[1] << ", " << uav.position[2]
+//               << ")  ->  ("
+//               << uav.target[0] << ", " << uav.target[1] << ", " << uav.target[2] << ")" << std::endl;
+//                //  std::cout<<uav.position[0]<< ", " << uav.position[1] << ", " << uav.position[2];
 //     }
 // }
 
-void Commander::broadcastPauseCommand() {
-    //std::cout << "stop" << std::endl;
-}
-
-void Commander::broadcastResumeCommand() {
-    //std::cout << "fly" << std::endl;
-}
-//测试匈牙利算法给定输入输出，输出各无人机位置
-void Commander::testAlgorithm() {
-    std::array<double, 3> center = {0.0, 0.0, 0.0};
-    double angle= 45;
-    int n_uavs= 6;
-    double distance= 1.0;
-    std::cout<< "1  2D line  2  2D arrow  3  3D slash" << std::endl;
-    std::cin >> cmd;
-    std::vector<std::array<double, 3>> testTargets = calculate_formation(center, angle, n_uavs, distance, cmd);
-
-     //测试
-     //打印目标点集合
-    std::cout << "........................." << std::endl;
-    std::cout << "Target Points:" << std::endl;
-    
-    for (const auto& target : testTargets) {
-        std::cout << "(" << target[0] << ", " << target[1] << ", " << target[2] << ")" << std::endl;
-    }
-    std::cout << "........................." << std::endl;
-    std::cout << "switching process:" << std::endl;
-    std::vector<Commander::UAV> testUavs= {
-        {1, {1.8, 2.8, 3.8}, {0, 0, 0}},
-        {2, {1.0, 2, 2}, {0, 0, 0}},
-        {3, {2, 2, 2}, {0, 0, 0}},
-        {4, {2, 2, 2}, {0, 0, 0}},
-        {5, {2, 2, 2}, {0, 0, 0}},
-        {6, {2, 2, 2}, {0, 0, 0}}
-    };
-    // std::vector<std::array<double, 3>> testTargets = {
-    //     {3.5, 4.6, 3.2},
-    //     {4.1, 4.7, 6.5},
-    //     {5.5, 2.4, 8.3},
-    //     {3, 2.4, 8.3},
-    //     {4, 2.4, 8.3},
-    //     {5.5, 5, 2},
-    // };
-    setTestData(testUavs, testTargets);
-    // xyl算法
-    xiongAlgorithm();
-    for (const auto& uav : uavs) { 
-       std::cout << "UAV " << uav.id << " (" 
-              << uav.position[0] << ", " << uav.position[1] << ", " << uav.position[2]
-              << ")  ->  ("
-              << uav.target[0] << ", " << uav.target[1] << ", " << uav.target[2] << ")" << std::endl;
-               //  std::cout<<uav.position[0]<< ", " << uav.position[1] << ", " << uav.position[2];
-    }
-}
-
 //计算两点间角度
-double Commander::calculateAngle(const json& sParams, const json& dParams) {
-    double deltaX = dParams["x"].get<double>() - sParams["x"].get<double>();
-    double deltaY = dParams["y"].get<double>() - sParams["y"].get<double>();
+double Commander::calculateAngle(const json& sparams, const json& dparams) {
+    double deltaX = dparams["x"].get<double>() - sparams["x"].get<double>();
+    double deltaY = dparams["y"].get<double>() - sparams["y"].get<double>();
     return std::atan2(deltaY, deltaX) * (180.0 / M_PI); // 角度转换为度
 }
 
@@ -300,27 +282,29 @@ void Commander::processJsonData(Commander& commander, std::string& jsonData, Thr
             sendDataQueue.push(uavString);
         }
     } else {
+        waitingResponse = true;
         // 计算编队信息
         std::array<double, 3> scenter;//source
         std::array<double, 3> dcenter;//destination
         int n_uavs = data.size();
         std::vector<Commander::UAV> testUavs;
+        std::vector<Commander::UAV> uavs_fp;
         double angle = 0.0;
 
         for (const auto& uavData : data) {
             if (uavData["uid"].get<std::string>() == leaderId) {
-                scenter[0] = uavData["sParams"]["x"].get<double>();
-                scenter[1] = uavData["sParams"]["y"].get<double>();
-                scenter[2] = uavData["sParams"]["z"].get<double>();
-                dcenter[0] = uavData["dParams"]["x"].get<double>();
-                dcenter[1] = uavData["dParams"]["y"].get<double>();
-                dcenter[2] = uavData["dParams"]["z"].get<double>();
-                angle = calculateAngle(uavData["sParams"], uavData["dParams"]);
+                scenter[0] = uavData["sparams"]["x"].get<double>();
+                scenter[1] = uavData["sparams"]["y"].get<double>();
+                scenter[2] = uavData["sparams"]["z"].get<double>();
+                // 保留原始目的坐标作为第二步切换的目标
+                dcenter[0] = uavData["dparams"]["x"].get<double>();
+                dcenter[1] = uavData["dparams"]["y"].get<double>();
+                dcenter[2] = uavData["dparams"]["z"].get<double>();
+                angle = calculateAngle(uavData["sparams"], uavData["dparams"]);
             }
-
             Commander::UAV uav;
             uav.id = std::stoi(uavData["uid"].get<std::string>());
-            uav.position = {uavData["sParams"]["x"].get<double>(), uavData["sParams"]["y"].get<double>(), uavData["sParams"]["z"].get<double>()};
+            uav.position = {uavData["sparams"]["x"].get<double>(), uavData["sparams"]["y"].get<double>(), uavData["sparams"]["z"].get<double>()};
             testUavs.push_back(uav);
         }
         double distance = 1.0; 
@@ -329,11 +313,11 @@ void Commander::processJsonData(Commander& commander, std::string& jsonData, Thr
        
         commander.process(scenter, angle, n_uavs, distance, testUavs, lineFormat);
 
-        // 更新 dParams 并放入 queue2
+        // 更新 dparams 并放入 queue2
         for (size_t i = 0; i <uavs.size(); ++i) {
-            data[i]["dParams"]["x"] = uavs[i].target[0];
-            data[i]["dParams"]["y"] = uavs[i].target[1];
-            data[i]["dParams"]["z"] = uavs[i].target[2];
+            data[i]["dparams"]["x"] = uavs[i].target[0] - uavs[i].position[0];
+            data[i]["dparams"]["y"] = uavs[i].target[1] - uavs[i].position[1];
+            data[i]["dparams"]["z"] = uavs[i].target[2] - uavs[i].position[2];
             data[i]["packType"] = 16;
             Commander::UAV uav1;
             uav1.id = i +1;
@@ -345,11 +329,12 @@ void Commander::processJsonData(Commander& commander, std::string& jsonData, Thr
         }
         //queue3 更改初始无人机集合uavs_fp
         commander.process(dcenter, angle, n_uavs, distance, uavs_fp, lineFormat);
-        // 更新 dParams 并放入临时队列
+        // 更新 dparams 并放入临时队列
+        //修改第二步切换坐标为相对移动坐标，而不是绝对坐标
         for (size_t i = 0; i <uavs.size(); ++i) {
-            data[i]["dParams"]["x"] = uavs[i].target[0];
-            data[i]["dParams"]["y"] = uavs[i].target[1];
-            data[i]["dParams"]["z"] = uavs[i].target[2];
+            data[i]["dparams"]["x"] = uavs[i].target[0] - uavs[i].position[0];
+            data[i]["dparams"]["y"] = uavs[i].target[1] - uavs[i].position[1];
+            data[i]["dparams"]["z"] = uavs[i].target[2] - uavs[i].position[2];
             data[i]["packType"] = 17;
             std::string update_data2=data[i].dump();
             //std::cout<<"update_data2:"<<update_data2<<endl;
@@ -400,20 +385,23 @@ int formation(ThreadSafeQueue<std::string>& sharedCommandQueue, ThreadSafeQueue<
     while (true) {
         // 判断是否进行第二部飞行
         int key = -1;
-        if (!sharedCommandQueue.empty()) {
+        if (!commander.waitingResponse && !sharedCommandQueue.empty()) {
             std::string jsonData = sharedCommandQueue.pop();
             commander.processJsonData(commander, jsonData, sendDataQueue, queueTemp);
         }
-        commander.processQueue(groupDirectiveExecutionQueue, key);
+        if(commander.waitingResponse == true){
+            commander.processQueue(groupDirectiveExecutionQueue, key);
+        }
         if(key == 1){          
             while(!queueTemp.empty()){
                 std::string jsonData = queueTemp.pop();
                 std::cout<<"update_data_2"<<jsonData<< std::endl;
                 sendDataQueue.push(jsonData);               
             }
-            
+            commander.waitingResponse = false;
         }else if(key == 0){
-                std::cout << "code = 0,只输出第一次切换的数据" << std::endl;
+            commander.waitingResponse = false;
+            std::cout << "code = 0,编队切换第一步失败，执行share队列其他命令" << std::endl;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
