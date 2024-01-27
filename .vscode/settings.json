@@ -112,6 +112,13 @@
     "numeric": "cpp",
     "future": "cpp",
     "iomanip": "cpp",
-    "valarray": "cpp"
+    "valarray": "cpp",
+    "bitset": "cpp",
+    "charconv": "cpp",
+    "csignal": "cpp",
+    "list": "cpp",
+    "unordered_set": "cpp",
+    "set": "cpp",
+    "variant": "cpp"
   }
 }
