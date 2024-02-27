@@ -25,6 +25,7 @@ extern const int RECEIVEFROMPYTHONPORT = 5001;   // 对python的开放端口
 extern const int RECEIVEFROMCPORT = 5002; // 对c++的开放端口
 int uavPackType[] = {0, 1, 2, 3}; //无人机返回数据包的type
 extern const string CALLBACKURL = "http://192.168.20.122:8080/ucs/uav/commandCallback";
+extern const string OFFLINEURL = "http://192.168.10.230:8083/mock/701/ucs/uav/deactivate";
 extern const std::string REDISIP = "172.21.2.1";
 extern const int REDISPORT = 6379;
 extern const std::string REDISPASSWORD = "Ustc1958@2023";
@@ -347,8 +348,17 @@ void receiveCData(int HOST, ThreadSafeQueue<DataPack>& mobilityQueue, ThreadSafe
             mobilityQueue.push(receivedPack);  // 存进移动管理队列
         }
         else if (receivedPack.getPackType() == 2){
-            groupDirectiveExecutionQueue.push(receivedPack); 
-                      
+            groupDirectiveExecutionQueue.push(receivedPack);           
+        }
+        else if (receivedPack.getPackType() == 3){
+            // 关机执行情况，给前端回调函数
+            std::string response;
+            std::string postData = receivedPack.payload;
+            if (performPostRequest(OFFLINEURL, postData, response)) {
+                std::cout << "尝试关机回调成功: " << response << std::endl;
+            }else{
+                std::cout << "尝试关机回调错误." << std::endl;
+            }
         }
         else if(receivedPack.getPackType() == 1){
             // 飞行指令执行情况，给前端回调函数
@@ -361,7 +371,6 @@ void receiveCData(int HOST, ThreadSafeQueue<DataPack>& mobilityQueue, ThreadSafe
             }else{
                 std::cout << "回调函数传输错误." << std::endl;
             }
-
         }
         
         else if(find(begin(uavPackType), end(uavPackType), receivedPack.getPackType()) != end(uavPackType)){

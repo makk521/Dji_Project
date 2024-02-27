@@ -34,6 +34,7 @@ extern const int RECEIVEFROMPYTHONPORT;   // 对python的开放端口
 extern const int RECEIVEFROMCPORT; // 对c++的开放端口
 extern const int uavPackType[]; //无人机返回数据包的type
 extern const string CALLBACKURL;
+extern const string OFFLINEURL;
 extern const std::string REDISIP;
 extern const int REDISPORT;
 extern const std::string REDISPASSWORD;

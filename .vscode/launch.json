@@ -8,8 +8,8 @@
       "args": [],
       "stopAtEntry": false,
       "externalConsole": true,
-      "cwd": "c:/Users/34511/Documents/GitHub/Dji_Project/ProjectStudy/LogStudy/easylogStudy/src",
-      "program": "c:/Users/34511/Documents/GitHub/Dji_Project/ProjectStudy/LogStudy/easylogStudy/src/build/Debug/outDebug",
+      "cwd": "c:/Users/34511/Documents/GitHub/Dji_Project/ProjectDevelop/Progress/v11/Scsn",
+      "program": "c:/Users/34511/Documents/GitHub/Dji_Project/ProjectDevelop/Progress/v11/Scsn/build/Debug/outDebug",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [
