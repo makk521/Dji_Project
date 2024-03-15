@@ -47,6 +47,7 @@ ThreadSafeQueue<std::string> sharedCommandQueue;
 ThreadSafeQueue<std::string> sendDataQueue; // 执行情况向无人机端发送数据
 ThreadSafeQueue<DataPack> groupDirectiveExecutionQueue; // 编队执行情况返回
 
+
 void RedisInit(std::string IP, int PORT, std::string PASSWORD){
     /**
     * @brief Redis初始化，若无则无法在线程中直接插入成功
@@ -160,6 +161,7 @@ void receivePythonData(int serverSocket, sockaddr_in serverAddr, ThreadSafeQueue
             break;
         }
         cout << "receivePythonThread received: " << buffer << endl;
+        LOG(INFO) << "SCSN收到来自fastapi的数据：" << buffer <<endl;
         sharedCommandQueue.push(buffer);
 
         // 发送响应
@@ -236,7 +238,8 @@ void consumerFun(ThreadSafeQueue<std::string>& sendDataQueue, int uavSocket, soc
 
     while (true) {
         std::string value = sendDataQueue.pop(); // 取出未处理的字符串{'uid': '2', 'uavType': '', 'action': 'takeoff', 'params': [], 'commandNum': ''}
-        std::cout << "从sendDataQueue取出" << value << std::endl;
+        LOG(INFO) << "SCSN模块从sendDataQueue取出数据：" << value;
+        //std::cout << "从sendDataQueue取出" << value << std::endl;
         
         std::replace(value.begin(), value.end(), '\'', '\"'); // 将'转"使得可以转为json格式
         json valueJson = json::parse(value);
@@ -267,9 +270,11 @@ void consumerFun(ThreadSafeQueue<std::string>& sendDataQueue, int uavSocket, soc
             break;
         }
         // temp.coutDataPackHeader();
-        std::cout << "发送数据Id" << temp.getDataSheetIdentificationNum() << std::endl;
+        //std::cout << "发送数据Id" << temp.getDataSheetIdentificationNum() << std::endl;
         // std::cout << "发送数据: " << dataToSendPacK.getPackType() << " Id  : " << dataToSendPacK.getDataSheetIdentificationNum() << std::endl;
-        std::cout << "发送给无人机的数据: " << payloadJson << std::endl;
+        //std::cout << "发送给无人机的数据: " << payloadJson << std::endl;
+        LOG(INFO) << "SCSN模块向无人机发送数据ID：" << temp.getDataSheetIdentificationNum();
+        LOG(INFO) << "SCSN模块向无人机发送数据：" << payloadJson;
     }
 }
 

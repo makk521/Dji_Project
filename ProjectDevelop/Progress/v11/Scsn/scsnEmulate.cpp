@@ -26,6 +26,7 @@
 #include "post.hpp"
 #include "scsnDataHead.h"
 #include "Commander.h"
+
 INITIALIZE_EASYLOGGINGPP
 
 using namespace std;
@@ -47,6 +48,7 @@ extern ThreadSafeQueue<DataPack> groupDirectiveExecutionQueue; // 编队指令�
 const std::string UAVIP = "192.168.10.83"; // 无人机端的IP地址
 const int UAVPORT = 8001; // 无人机端开放的端口
 
+
 void initLogger(){
     /**
     * @brief 配置名为"myLogger"的日志记录器，使其将所有级别的日志消息写入到文件myeasylog.log(运行位置)中,默认名称
@@ -57,6 +59,7 @@ void initLogger(){
     conf.setToDefault();
     el::Loggers::reconfigureLogger("myLogger", conf);
 }
+
 
 int main() {
     /**
